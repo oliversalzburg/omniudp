@@ -7,93 +7,80 @@ using PCSC;
 
 namespace OmniPi {
   internal class Program {
+
+    private static SCardContext Context { get; set; }
+
     private static void Main( string[] args ) {
-      ConsoleKeyInfo keyinfo;
-
-      Console.WriteLine( "This program will monitor all SmartCard readers and display all status changes." );
-      Console.WriteLine( "Press a key to continue." );
-
-      keyinfo = Console.ReadKey();
-
+      
       // Retrieve the names of all installed readers.
-      SCardContext ctx = new SCardContext();
-      ctx.Establish( SCardScope.System );
-      string[] readernames = ctx.GetReaders();
-      ctx.Release();
+      using( Context = new SCardContext() ) {
+        Context.Establish( SCardScope.System );
+        string[] readernames = Context.GetReaders();
 
-      if( readernames == null || readernames.Length == 0 ) {
-        Console.WriteLine( "There are currently no readers installed." );
-        return;
+        if( null == readernames || 0 == readernames.Length ) {
+          Console.Error.WriteLine( "There are currently no readers installed." );
+          return;
+        }
+
+        // Create a monitor object with its own PC/SC context.
+        SCardMonitor monitor = new SCardMonitor( new SCardContext(), SCardScope.System );
+
+        // Point the callback function(s) to the static defined methods below.
+        monitor.CardInserted += CardInserted;
+        /*
+        monitor.CardRemoved      += new CardRemovedEvent( CardRemoved );
+        monitor.Initialized      += new CardInitializedEvent( Initialized );
+        monitor.StatusChanged    += new StatusChangeEvent( StatusChanged );
+        monitor.MonitorException += new MonitorExceptionEvent( MonitorException );
+        */
+
+        foreach( string reader in readernames ) {
+          Console.WriteLine( "Start monitoring for reader " + reader + "." );
+        }
+        Console.WriteLine( "Press any key to exit." );
+
+        monitor.Start( readernames );
+
+        // Let the program run until the user presses a key
+        Console.ReadKey();
+
+        // Stop monitoring
+        monitor.Cancel();
       }
-
-      // Create a monitor object with its own PC/SC context.
-      SCardMonitor monitor = new SCardMonitor(
-        new SCardContext(),
-        SCardScope.System );
-
-      // Point the callback function(s) to the static defined methods below.
-      monitor.CardInserted     += new CardInsertedEvent( CardInserted );
-      monitor.CardRemoved      += new CardRemovedEvent( CardRemoved );
-      monitor.Initialized      += new CardInitializedEvent( Initialized );
-      monitor.StatusChanged    += new StatusChangeEvent( StatusChanged );
-      monitor.MonitorException += new MonitorExceptionEvent( MonitorException );
-
-      foreach( string reader in readernames ) {
-        Console.WriteLine( "Start monitoring for reader " + reader + "." );
-      }
-
-      monitor.Start( readernames );
-
-      // Let the program run until the user presses a key
-      keyinfo = Console.ReadKey();
-      GC.KeepAlive( keyinfo );
-
-      // Stop monitoring
-      monitor.Cancel();
     }
 
     private static void CardInserted( object sender, CardStatusEventArgs args ) {
       SCardMonitor monitor = (SCardMonitor)sender;
-
-      Console.WriteLine(
-        ">> CardInserted Event for reader: "
-        + args.ReaderName );
-      Console.WriteLine( "   ATR: " + StringAtr( args.Atr ) );
-      Console.WriteLine( "   State: " + args.State + "\n" );
-
-      Foo( args.ReaderName );
+      /*
+      Console.WriteLine( ">> CardInserted Event for reader: " + args.ReaderName );
+      Console.WriteLine( "   ATR: {0}", StringAtr( args.Atr ) );
+      Console.WriteLine( "   State: {0}\n", args.State );
+      */
+      PrintUID( args.ReaderName );
     }
 
     private static void CardRemoved( object sender, CardStatusEventArgs args ) {
       SCardMonitor monitor = (SCardMonitor)sender;
 
-      Console.WriteLine(
-        ">> CardRemoved Event for reader: "
-        + args.ReaderName );
-      Console.WriteLine( "   ATR: " + StringAtr( args.Atr ) );
-      Console.WriteLine( "   State: " + args.State + "\n" );
+      Console.WriteLine( ">> CardRemoved Event for reader: " + args.ReaderName );
+      Console.WriteLine( "   ATR: {0}", StringAtr( args.Atr ) );
+      Console.WriteLine( "   State: {0}\n", args.State );
     }
 
     private static void Initialized( object sender, CardStatusEventArgs args ) {
       SCardMonitor monitor = (SCardMonitor)sender;
 
-      Console.WriteLine(
-        ">> Initialized Event for reader: "
-        + args.ReaderName );
-      Console.WriteLine( "   ATR: " + StringAtr( args.Atr ) );
-      Console.WriteLine( "   State: " + args.State + "\n" );
+      Console.WriteLine( ">> Initialized Event for reader: " + args.ReaderName );
+      Console.WriteLine( "   ATR: {0}", StringAtr( args.Atr ) );
+      Console.WriteLine( "   State: {0}\n", args.State );
     }
 
     private static void StatusChanged( object sender, StatusChangeEventArgs args ) {
       SCardMonitor monitor = (SCardMonitor)sender;
 
-      Console.WriteLine(
-        ">> StatusChanged Event for reader: "
-        + args.ReaderName );
-      Console.WriteLine( "   ATR: " + StringAtr( args.ATR ) );
-      Console.WriteLine(
-        "   Last state: " + args.LastState
-        + "\n   New state: " + args.NewState + "\n" );
+      Console.WriteLine( ">> StatusChanged Event for reader: " + args.ReaderName );
+      Console.WriteLine( "   ATR: {0}", StringAtr( args.ATR ) );
+      Console.WriteLine( "   Last state: {0}\n   New state: {1}\n", args.LastState, args.NewState );
     }
 
     private static void MonitorException( object sender, PCSCException ex ) {
@@ -120,66 +107,61 @@ namespace OmniPi {
       return sb.ToString();
     }
 
-    private static void Foo( string readername ) {
-      SCardContext ctx = new SCardContext();
-      ctx.Establish( SCardScope.System );
+    /// <summary>
+    /// Prints the UID of a card that is currently connected to the given reader.
+    /// </summary>
+    /// <param name="readername"></param>
+    /// <exception cref="Exception">Could not begin transaction.</exception>
+    private static void PrintUID( string readername ) {
+      SCardReader rfidReader = new SCardReader( Context );
+      SCardError resultCode = rfidReader.Connect( readername, SCardShareMode.Shared, SCardProtocol.Any );
 
-      SCardReader RFIDReader = new SCardReader( ctx );
-      SCardError rc = RFIDReader.Connect(
-        readername,
-        SCardShareMode.Shared,
-        SCardProtocol.Any );
-
-      if( rc != SCardError.Success ) {
-        Console.WriteLine(
-          "Unable to connect to RFID card / chip. Error: " +
-          SCardHelper.StringifyError( rc ) );
+      if( resultCode != SCardError.Success ) {
+        Console.Error.WriteLine( "Unable to connect to RFID card / chip. Error: " + SCardHelper.StringifyError( resultCode ) );
         return;
       }
 
       // prepare APDU
-      byte[] ucByteSend = new byte[] {
+      byte[] payload = new byte[] {
         0xFF, // the instruction class
         0xCA, // the instruction code 
         0x00, // parameter to the instruction
         0x00, // parameter to the instruction
         0x00 // size of I/O transfer
       };
-      byte[] ucByteReceive = new byte[10];
+      byte[] receiveBuffer = new byte[10];
 
-      Console.Out.WriteLine( "Retrieving the UID .... " );
-
-      rc = RFIDReader.BeginTransaction();
-      if( rc != SCardError.Success ) {
+      resultCode = rfidReader.BeginTransaction();
+      if( resultCode != SCardError.Success ) {
         throw new Exception( "Could not begin transaction." );
       }
 
       SCardPCI ioreq = new SCardPCI(); /* creates an empty object (null).
                                         * IO returned protocol control information.
                                         */
-      IntPtr sendPci = SCardPCI.GetPci( RFIDReader.ActiveProtocol );
-      rc = RFIDReader.Transmit(
-        sendPci, /* Protocol control information, T0, T1 and Raw
+
+      IntPtr protocolControlInformation = SCardPCI.GetPci( rfidReader.ActiveProtocol );
+      resultCode = rfidReader.Transmit(
+        protocolControlInformation, /* Protocol control information, T0, T1 and Raw
                   * are global defined protocol header structures.
                   */
-        ucByteSend, /* the actual data to be written to the card */
+        payload, /* the actual data to be written to the card */
         ioreq, /* The returned protocol control information */
-        ref ucByteReceive );
+        ref receiveBuffer );
 
-      if( rc == SCardError.Success ) {
-        Console.Write( "Uid: " );
-        for( int i = 0; i < ( ucByteReceive.Length ); i++ ) {
-          Console.Write( "{0:X2} ", ucByteReceive[ i ] );
+      if( resultCode == SCardError.Success ) {
+        Console.Write( "UID: " );
+        for( int i = 0; i < ( receiveBuffer.Length ); i++ ) {
+          Console.Write( "{0:X2} ", receiveBuffer[ i ] );
         }
-        Console.WriteLine( "" );
+        Console.WriteLine();
+
       } else {
-        Console.WriteLine( "Error: " + SCardHelper.StringifyError( rc ) );
+        Console.Error.WriteLine( "Error: " + SCardHelper.StringifyError( resultCode ) );
       }
 
-      RFIDReader.EndTransaction( SCardReaderDisposition.Leave );
-      RFIDReader.Disconnect( SCardReaderDisposition.Reset );
-
-      return;
+      rfidReader.EndTransaction( SCardReaderDisposition.Leave );
+      rfidReader.Disconnect( SCardReaderDisposition.Reset );
     }
   }
 }
