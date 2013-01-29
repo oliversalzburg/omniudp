@@ -36,7 +36,7 @@
   </appender>
 
   <appender name="RollingLogFileAppender" type="log4net.Appender.RollingFileAppender">
-    <file value="jobtracker.log" />
+    <file value="omniudp.log" />
     <encoding value="utf-8" />
     <appendToFile value="true" />
     <rollingStyle value="Date" />
