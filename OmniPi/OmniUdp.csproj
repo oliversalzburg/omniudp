@@ -7,8 +7,8 @@
     <ProjectGuid>{6C41CCA4-E737-4EB9-8AF1-66D2767EC0E7}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>OmniPi</RootNamespace>
-    <AssemblyName>OmniPi</AssemblyName>
+    <RootNamespace>OmniUdp</RootNamespace>
+    <AssemblyName>OmniUdp</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>

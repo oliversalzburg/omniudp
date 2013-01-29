@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniPi", "OmniPi\OmniPi.csproj", "{6C41CCA4-E737-4EB9-8AF1-66D2767EC0E7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniUdp", "OmniPi\OmniUdp.csproj", "{6C41CCA4-E737-4EB9-8AF1-66D2767EC0E7}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "pcsc-sharp", "lib\pcsc-sharp-2.0.0.4\pcsc-sharp\pcsc-sharp.csproj", "{459E0FB4-AF42-4123-9923-7EA68CA01B09}"
 EndProject
