@@ -2,12 +2,17 @@
 using System.Net;
 using System.Net.Sockets;
 using PCSC;
+using log4net;
 
-namespace OmniPi {
+namespace OmniUdp {
   /// <summary>
   /// Main application class
   /// </summary>
   internal static class Program {
+    /// <summary>
+    /// The logging interface
+    /// </summary>
+    private static readonly ILog Log = LogManager.GetLogger( System.Reflection.MethodBase.GetCurrentMethod().DeclaringType );
 
     /// <summary>
     /// Smart card handling context
@@ -24,7 +29,7 @@ namespace OmniPi {
         string[] readernames = Context.GetReaders();
 
         if( null == readernames || 0 == readernames.Length ) {
-          Console.Error.WriteLine( "There are currently no readers installed." );
+          Log.Error( "There are currently no readers installed." );
           return;
         }
 
@@ -35,9 +40,9 @@ namespace OmniPi {
         monitor.CardInserted += CardInserted;
 
         foreach( string reader in readernames ) {
-          Console.WriteLine( "Start monitoring for reader {0}.", reader );
+          Log.InfoFormat( "Start monitoring for reader {0}.", reader );
         }
-        Console.WriteLine( "Press any key to exit." );
+        Console.Title = "Press any key to exit.";
 
         monitor.Start( readernames );
 
@@ -59,7 +64,7 @@ namespace OmniPi {
       SCardError resultCode = rfidReader.Connect( readername, SCardShareMode.Shared, SCardProtocol.Any );
 
       if( resultCode != SCardError.Success ) {
-        Console.Error.WriteLine( "Unable to connect to RFID card / chip. Error: " + SCardHelper.StringifyError( resultCode ) );
+        Log.Error( "Unable to connect to RFID card / chip. Error: " + SCardHelper.StringifyError( resultCode ) );
         return null;
       }
 
@@ -84,7 +89,7 @@ namespace OmniPi {
       resultCode = rfidReader.Transmit( protocolControlInformation, payload, ioreq, ref receiveBuffer );
 
       if( resultCode != SCardError.Success ) {
-        Console.Error.WriteLine( "Error: " + SCardHelper.StringifyError( resultCode ) );
+        Log.Error( SCardHelper.StringifyError( resultCode ) );
         receiveBuffer = null;
       }
 
@@ -114,7 +119,7 @@ namespace OmniPi {
     private static void CardInserted( object sender, CardStatusEventArgs args ) {
       byte[] uid = UidFromConnectedCard( args.ReaderName );
       string uidString = BitConverter.ToString( uid );
-      Console.Out.WriteLine( uidString );
+      Log.Info( uidString );
       BroadcastUidEvent( uid );
     }
   }

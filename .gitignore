@@ -1,3 +1,4 @@
 /*.suo
-/OmniPi/obj
-/OmniPi/bin
+/OmniUdp/obj
+/OmniUdp/bin
+/packages/log4net.2.0.0
