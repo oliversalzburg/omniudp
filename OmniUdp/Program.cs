@@ -26,7 +26,16 @@ namespace OmniUdp {
       // Retrieve the names of all installed readers.
       using( Context = new SCardContext() ) {
         Context.Establish( SCardScope.System );
-        string[] readernames = Context.GetReaders();
+
+        string[] readernames;
+        try {
+          readernames = Context.GetReaders();
+
+        } catch( PCSCException ex ) {
+          Log.Error( "Unable to get readers. Press any key to exit.", ex );
+          Console.ReadKey();
+          return;
+        }
 
         if( null == readernames || 0 == readernames.Length ) {
           Log.Error( "There are currently no readers installed." );
