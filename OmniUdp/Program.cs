@@ -19,6 +19,8 @@ namespace OmniUdp {
     /// </summary>
     private static SCardContext Context { get; set; }
 
+    private static readonly UidBroadcaster Broadcast = new UidBroadcaster();
+
     /// <summary>
     /// Main entry point
     /// </summary>
@@ -114,10 +116,13 @@ namespace OmniUdp {
     /// <param name="uid">The UID that should be broadcast.</param>
     /// <param name="port">The UDP port to use.</param>
     private static void BroadcastUidEvent( byte[] uid, int port = 30000 ) {
+      Broadcast.BroadcastUid( uid,port );
+      /*
       UdpClient udpClient = new UdpClient {
         EnableBroadcast = true
       };
       udpClient.Send( uid, uid.Length, new IPEndPoint( IPAddress.Broadcast, port ) );
+       */
     }
 
     /// <summary>
