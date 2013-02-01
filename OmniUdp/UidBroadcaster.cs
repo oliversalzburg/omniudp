@@ -1,23 +1,28 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
-using System.Text;
-using System.Threading.Tasks;
 using log4net;
 
 namespace OmniUdp {
-  internal class UidBroadcaster {
+  /// <summary>
+  /// Allows for simple data packet broadcasting via UDP
+  /// </summary>
+  internal static class UidBroadcaster {
     /// <summary>
     /// The logging interface
     /// </summary>
     private static readonly ILog Log = LogManager.GetLogger( System.Reflection.MethodBase.GetCurrentMethod().DeclaringType );
 
-    public void BroadcastUid( byte[] uid, int port ) {
-      Dictionary<IPAddress, PhysicalAddress> ipMacTable = IPHelper.BuildIpMacTable();
+    /// <summary>
+    /// Broadcast the provided UID on all interfaces
+    /// </summary>
+    /// <param name="uid">The UID to broadcast</param>
+    /// <param name="port">The target UDP port that should be used.</param>
+    public static void BroadcastUid( byte[] uid, int port ) {
+      Dictionary<IPAddress, PhysicalAddress> ipMacTable = IpHelper.BuildIpMacTable();
       IPAddress[] ipAddresses = ipMacTable.Keys.ToArray();
 
       Socket broadcastSocket = null;
@@ -30,7 +35,6 @@ namespace OmniUdp {
           broadcastSocket.SetSocketOption( SocketOptionLevel.Socket, SocketOptionName.Broadcast, 1 );
           broadcastSocket.Bind( new IPEndPoint( sourceIp, 0 ) );
 
-          EndPoint receiveEndPoint = new IPEndPoint( IPAddress.Any, new Random().Next( 10000, 20000 ) );
           IPEndPoint sendEndPoint = new IPEndPoint( IPAddress.Broadcast, port );
 
           broadcastSocket.SendTo( uid, sendEndPoint );
@@ -43,8 +47,6 @@ namespace OmniUdp {
           }
         }
       }
-
-      //Log.Error( "Error: Obtaining server configuration failed!" );
     }
   }
 }
