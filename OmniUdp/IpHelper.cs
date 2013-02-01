@@ -13,13 +13,17 @@ namespace OmniUdp {
     /// Builds an IP to MAC lookup table.
     /// </summary>
     public static Dictionary<IPAddress, PhysicalAddress> BuildIpMacTable() {
-      Dictionary<IPAddress,PhysicalAddress> table = new Dictionary<IPAddress, PhysicalAddress>();
+      Dictionary<IPAddress, PhysicalAddress> table = new Dictionary<IPAddress, PhysicalAddress>();
 
       NetworkInterface[] networkInterfaces = NetworkInterface.GetAllNetworkInterfaces();
       foreach( NetworkInterface networkInterface in networkInterfaces ) {
         IPInterfaceProperties ipInterfaceProperties = networkInterface.GetIPProperties();
         foreach( UnicastIPAddressInformation unicastAddress in
-          ipInterfaceProperties.UnicastAddresses.Where( unicastAddress => unicastAddress.Address.AddressFamily == AddressFamily.InterNetwork ) ) {
+          ipInterfaceProperties.UnicastAddresses.Where(
+            unicastAddress =>
+            unicastAddress.Address.AddressFamily == AddressFamily.InterNetwork
+            && !IPAddress.IsLoopback( unicastAddress.Address )
+            && !unicastAddress.Address.ToString().StartsWith( "169.254." ) ) ) {
           table[ unicastAddress.Address ] = networkInterface.GetPhysicalAddress();
         }
       }

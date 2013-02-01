@@ -29,7 +29,6 @@ namespace OmniUdp {
       foreach( IPAddress sourceIp in ipAddresses ) {
         try {
           Log.InfoFormat( "Broadcasting from '{0}'...", sourceIp );
-          // The socket used for discovery
           broadcastSocket = new Socket( AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp );
           broadcastSocket.ReceiveTimeout = (int)TimeSpan.FromSeconds( 10 ).TotalMilliseconds;
           broadcastSocket.SetSocketOption( SocketOptionLevel.Socket, SocketOptionName.Broadcast, 1 );
@@ -38,9 +37,11 @@ namespace OmniUdp {
           IPEndPoint sendEndPoint = new IPEndPoint( IPAddress.Broadcast, port );
 
           broadcastSocket.SendTo( uid, sendEndPoint );
+
         } catch( Exception e ) {
           Log.Error( e.Message );
           Log.Debug( e.StackTrace );
+
         } finally {
           if( null != broadcastSocket ) {
             broadcastSocket.Close();
