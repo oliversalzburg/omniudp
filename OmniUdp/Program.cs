@@ -71,8 +71,7 @@ namespace OmniUdp {
       SCardError resultCode = rfidReader.Connect( readername, SCardShareMode.Shared, SCardProtocol.Any );
 
       if( resultCode != SCardError.Success ) {
-        Log.Error( "Unable to connect to RFID card / chip. Error: " + SCardHelper.StringifyError( resultCode ) );
-        return null;
+        throw new Exception( "Unable to connect to RFID card / chip. Error: " + SCardHelper.StringifyError( resultCode ) );
       }
 
       // prepare APDU
@@ -121,10 +120,15 @@ namespace OmniUdp {
     /// <param name="sender"></param>
     /// <param name="args"></param>
     private static void CardInserted( object sender, CardStatusEventArgs args ) {
-      byte[] uid = UidFromConnectedCard( args.ReaderName );
-      string uidString = BitConverter.ToString( uid );
-      Log.Info( uidString );
-      BroadcastUidEvent( uid );
+      try {
+        byte[] uid = UidFromConnectedCard( args.ReaderName );
+        string uidString = BitConverter.ToString( uid );
+        Log.Info( uidString );
+        BroadcastUidEvent( uid );
+
+      } catch( Exception ex ) {
+        Log.Error( ex.Message );
+      }
     }
   }
 }
