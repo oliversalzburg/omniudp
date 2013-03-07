@@ -122,7 +122,13 @@ namespace OmniUdp {
     private static void CardInserted( object sender, CardStatusEventArgs args ) {
       try {
         byte[] uid = UidFromConnectedCard( args.ReaderName );
-        string uidString = BitConverter.ToString( uid );
+        
+        // We only care about the first 4 bytes
+        byte[] shortUid = new byte[4];
+        Array.Copy( uid, shortUid, 4 );
+
+        string uidString = BitConverter.ToString( shortUid );
+
         Log.Info( uidString );
         BroadcastUidEvent( uid );
 
