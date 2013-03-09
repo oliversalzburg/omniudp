@@ -130,7 +130,7 @@ namespace OmniUdp {
         string uidString = BitConverter.ToString( shortUid );
 
         Log.Info( uidString );
-        BroadcastUidEvent( uid );
+        BroadcastUidEvent( shortUid );
 
       } catch( Exception ex ) {
         Log.Error( ex.Message );
