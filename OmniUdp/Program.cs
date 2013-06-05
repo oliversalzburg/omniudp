@@ -1,26 +1,48 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Reflection;
+using NDesk.Options;
 using PCSC;
 using log4net;
 
 namespace OmniUdp {
   /// <summary>
-  /// Main application class
+  ///   Main application class
   /// </summary>
   internal static class Program {
     /// <summary>
-    /// The logging interface
+    ///   The logging <see langword="interface" />
     /// </summary>
     private static readonly ILog Log = LogManager.GetLogger( System.Reflection.MethodBase.GetCurrentMethod().DeclaringType );
 
     /// <summary>
-    /// Smart card handling context
+    ///   Smart card handling context
     /// </summary>
     private static SCardContext Context { get; set; }
 
     /// <summary>
-    /// Main entry point
+    ///   The IP address from which to broadcast.-
     /// </summary>
-    private static void Main() {
+    private static string IPAddress { get; set; }
+
+    /// <summary>
+    ///   Should the command line help be displayed?
+    /// </summary>
+    private static bool ShowHelp { get; set; }
+
+    /// <summary>
+    ///   <see cref="Program.Main" /> entry point
+    /// </summary>
+    private static void Main( string[] args ) {
+      if( ParseCommandLine( args ) ) {
+        return;
+      }
+
+      if( null != IPAddress ) {
+        Log.InfoFormat( "Broadcasts limited to '{0}'.", IPAddress );
+      }
+
       // Retrieve the names of all installed readers.
       using( Context = new SCardContext() ) {
         Context.Establish( SCardScope.System );
@@ -28,7 +50,6 @@ namespace OmniUdp {
         string[] readernames;
         try {
           readernames = Context.GetReaders();
-
         } catch( PCSCException ex ) {
           Log.Error( "Unable to get readers. Press any key to exit.", ex );
           Console.ReadKey();
@@ -62,7 +83,8 @@ namespace OmniUdp {
     }
 
     /// <summary>
-    /// Retrieves the UID of a card that is currently connected to the given reader.
+    ///   Retrieves the UID of a card that is currently connected to the given
+    ///   reader.
     /// </summary>
     /// <param name="readername"></param>
     /// <exception cref="Exception">Could not begin transaction.</exception>
@@ -89,7 +111,7 @@ namespace OmniUdp {
         throw new Exception( "Could not begin transaction." );
       }
 
-      SCardPCI ioreq = new SCardPCI(); 
+      SCardPCI ioreq = new SCardPCI();
 
       IntPtr protocolControlInformation = SCardPCI.GetPci( rfidReader.ActiveProtocol );
       resultCode = rfidReader.Transmit( protocolControlInformation, payload, ioreq, ref receiveBuffer );
@@ -106,23 +128,23 @@ namespace OmniUdp {
     }
 
     /// <summary>
-    /// Sends out a UDP broadcast containing the UID
+    ///   Sends out a UDP broadcast containing the UID
     /// </summary>
     /// <param name="uid">The UID that should be broadcast.</param>
     /// <param name="port">The UDP port to use.</param>
     private static void BroadcastUidEvent( byte[] uid, int port = 30000 ) {
-      UidBroadcaster.BroadcastUid( uid, port );
+      UidBroadcaster.BroadcastUid( uid, port, IPAddress );
     }
 
     /// <summary>
-    /// Invoked when a new card was inserted into the reader
+    ///   Invoked when a new card was inserted into the reader
     /// </summary>
     /// <param name="sender"></param>
     /// <param name="args"></param>
     private static void CardInserted( object sender, CardStatusEventArgs args ) {
       try {
         byte[] uid = UidFromConnectedCard( args.ReaderName );
-        
+
         // We only care about the first 4 bytes
         byte[] shortUid = new byte[4];
         Array.Copy( uid, shortUid, 4 );
@@ -131,10 +153,46 @@ namespace OmniUdp {
 
         Log.Info( uidString );
         BroadcastUidEvent( shortUid );
-
       } catch( Exception ex ) {
         Log.Error( ex.Message );
       }
+    }
+
+    /// <summary>
+    ///   Parses command line parameters.
+    /// </summary>
+    /// <param name="args">
+    ///   The command line parameters passed to the program.
+    /// </param>
+    /// <returns>
+    ///   <see langword="true" /> if the application should exit.
+    /// </returns>
+    private static bool ParseCommandLine( IEnumerable<string> args ) {
+      OptionSet options = new OptionSet {
+        {"ip=", "The IP address from which to broadcast. By default all addresses are used.", v => IPAddress = v},
+        {"h|?|help", "Shows this help message", v => ShowHelp = v != null}
+      };
+
+      try {
+        options.Parse( args );
+      } catch( OptionException ex ) {
+        Console.Write( "{0}:", new FileInfo( Assembly.GetExecutingAssembly().Location ).Name );
+        Console.WriteLine( ex.Message );
+        Console.WriteLine(
+          "Try '{0} --help' for more information.", new FileInfo( Assembly.GetExecutingAssembly().Location ).Name );
+        return true;
+      }
+
+      if( ShowHelp ) {
+        Console.WriteLine( "Usage: {0} [OPTIONS]", new FileInfo( Assembly.GetExecutingAssembly().Location ).Name );
+        Console.WriteLine();
+        Console.WriteLine( "Options:" );
+        Console.WriteLine();
+        options.WriteOptionDescriptions( Console.Out );
+        return true;
+      }
+
+      return false;
     }
   }
 }
