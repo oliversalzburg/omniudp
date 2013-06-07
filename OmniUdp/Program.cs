@@ -22,7 +22,12 @@ namespace OmniUdp {
     private static SCardContext Context { get; set; }
 
     /// <summary>
-    ///   The IP address from which to broadcast.-
+    ///   The network <see langword="interface" /> from which to broadcast.
+    /// </summary>
+    private static string NetworkInterface { get; set; }
+
+    /// <summary>
+    ///   The IP address from which to broadcast.
     /// </summary>
     private static string IPAddress { get; set; }
 
@@ -39,8 +44,15 @@ namespace OmniUdp {
         return;
       }
 
+      if( null != NetworkInterface ) {
+        if( !IpHelper.DoesInterfaceExist( NetworkInterface ) ) {
+          Console.Error.WriteLine( "The given interface '{0}' does not exist on the local system.", NetworkInterface );
+          return;
+        }
+        Log.InfoFormat( "Broadcasts limited to interface '{0}'.", NetworkInterface );
+      }
       if( null != IPAddress ) {
-        Log.InfoFormat( "Broadcasts limited to '{0}'.", IPAddress );
+        Log.InfoFormat( "Broadcasts limited to address '{0}'.", IPAddress );
       }
 
       // Retrieve the names of all installed readers.
@@ -133,7 +145,7 @@ namespace OmniUdp {
     /// <param name="uid">The UID that should be broadcast.</param>
     /// <param name="port">The UDP port to use.</param>
     private static void BroadcastUidEvent( byte[] uid, int port = 30000 ) {
-      UidBroadcaster.BroadcastUid( uid, port, IPAddress );
+      UidBroadcaster.BroadcastUid( uid, port, IPAddress, NetworkInterface );
     }
 
     /// <summary>
@@ -169,6 +181,7 @@ namespace OmniUdp {
     /// </returns>
     private static bool ParseCommandLine( IEnumerable<string> args ) {
       OptionSet options = new OptionSet {
+        {"interface=", "The network interface from which to broadcast. By default all interfaces are used.", v => NetworkInterface = v},
         {"ip=", "The IP address from which to broadcast. By default all addresses are used.", v => IPAddress = v},
         {"h|?|help", "Shows this help message", v => ShowHelp = v != null}
       };

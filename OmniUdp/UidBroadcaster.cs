@@ -25,11 +25,14 @@ namespace OmniUdp {
     ///   Only broadcast from the given IP address. By default, all IP addresses
     ///   are used.
     /// </param>
+    /// <param name="limitToInterface">
+    ///   Only broadcast from this interface. By default, all interfaces are used.
+    /// </param>
     /// <exception cref="InvalidOperationException">
     ///   The given IP address isn't assigned to any local network adapter.
     /// </exception>
-    public static void BroadcastUid( byte[] uid, int port, string limitToAddress = null ) {
-      Dictionary<IPAddress, PhysicalAddress> ipMacTable = IpHelper.BuildIpMacTable();
+    public static void BroadcastUid( byte[] uid, int port, string limitToAddress = null, string limitToInterface = null ) {
+      Dictionary<IPAddress, PhysicalAddress> ipMacTable = IpHelper.BuildIpMacTable( limitToInterface );
       IPAddress[] ipAddresses = ipMacTable.Keys.ToArray();
 
       if( null != limitToAddress ) {
