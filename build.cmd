@@ -20,6 +20,5 @@ IF NOT EXIST C:\Windows\Microsoft.NET\Framework\v* (
   :build
   ECHO Building...
   MSBuild.exe "%~dp0%SOLUTION_FILENAME%" /t:Rebuild /p:Configuration=Release /p:Platform="Any CPU"
-  
 )
 ENDLOCAL
