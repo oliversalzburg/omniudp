@@ -4,7 +4,7 @@ SET SOLUTION_FILENAME=OmniUdp.sln
 IF EXIST packages\NuGet.exe (
   SET EnableNuGetPackageRestore=true
   echo Installing NuGet pacakges...
-  FOR /F %%n in ('dir /b /s packages.config') DO (
+  FOR /F "delims=" %%n in ('dir /b /s packages.config') DO (
     packages\NuGet.exe install "%%n" -o packages
   )
 )
