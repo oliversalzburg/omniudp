@@ -2,6 +2,7 @@
 SETLOCAL
 SET SOLUTION_FILENAME=OmniUdp.sln
 IF EXIST packages\NuGet.exe (
+  SET EnableNuGetPackageRestore=true
   echo Installing NuGet pacakges...
   FOR /F %%n in ('dir /b /s packages.config') DO (
     packages\NuGet.exe install %%n -o packages
@@ -18,7 +19,7 @@ IF NOT EXIST C:\Windows\Microsoft.NET\Framework\v* (
   )
   :build
   ECHO Building...
-  MSBuild.exe %~dp0\%SOLUTION_FILENAME% /t:Rebuild /p:Configuration=Release /p:Platform="Any CPU"
+  MSBuild.exe %~dp0%SOLUTION_FILENAME% /t:Rebuild /p:Configuration=Release /p:Platform="Any CPU"
   
 )
 ENDLOCAL
