@@ -66,5 +66,18 @@ namespace OmniUdp {
         }
       }
     }
+
+    public static void BroadcastLoopback( byte[] uid, int port ) {
+      Socket broadcastSocket = null;
+      Log.InfoFormat( "Broadcasting locally..." );
+      broadcastSocket = new Socket( AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp );
+      broadcastSocket.ReceiveTimeout = (int)TimeSpan.FromSeconds( 10 ).TotalMilliseconds;
+      broadcastSocket.SetSocketOption( SocketOptionLevel.Socket, SocketOptionName.Broadcast, 1 );
+      broadcastSocket.Bind( new IPEndPoint( IPAddress.Loopback, 0 ) );
+
+      IPEndPoint sendEndPoint = new IPEndPoint( IPAddress.Broadcast, port );
+
+      broadcastSocket.SendTo( uid, sendEndPoint );
+    }
   }
 }

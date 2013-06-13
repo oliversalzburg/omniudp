@@ -32,6 +32,11 @@ namespace OmniUdp {
     private static string IPAddress { get; set; }
 
     /// <summary>
+    ///   Use only the loopback device for broadcasting.
+    /// </summary>
+    private static bool UseLoopback { get; set; }
+
+    /// <summary>
     ///   Should the command line help be displayed?
     /// </summary>
     private static bool ShowHelp { get; set; }
@@ -44,15 +49,19 @@ namespace OmniUdp {
         return;
       }
 
-      if( null != NetworkInterface ) {
-        if( !IpHelper.DoesInterfaceExist( NetworkInterface ) ) {
-          Console.Error.WriteLine( "The given interface '{0}' does not exist on the local system.", NetworkInterface );
-          return;
+      if( !UseLoopback ) {
+        if( null != NetworkInterface ) {
+          if( !IpHelper.DoesInterfaceExist( NetworkInterface ) ) {
+            Console.Error.WriteLine( "The given interface '{0}' does not exist on the local system.", NetworkInterface );
+            return;
+          }
+          Log.InfoFormat( "Broadcasts limited to interface '{0}'.", NetworkInterface );
         }
-        Log.InfoFormat( "Broadcasts limited to interface '{0}'.", NetworkInterface );
-      }
-      if( null != IPAddress ) {
-        Log.InfoFormat( "Broadcasts limited to address '{0}'.", IPAddress );
+        if( null != IPAddress ) {
+          Log.InfoFormat( "Broadcasts limited to address '{0}'.", IPAddress );
+        }
+      } else {
+        IPAddress = "127.0.0.1";
       }
 
       // Retrieve the names of all installed readers.
@@ -145,7 +154,11 @@ namespace OmniUdp {
     /// <param name="uid">The UID that should be broadcast.</param>
     /// <param name="port">The UDP port to use.</param>
     private static void BroadcastUidEvent( byte[] uid, int port = 30000 ) {
-      UidBroadcaster.BroadcastUid( uid, port, IPAddress, NetworkInterface );
+      if( UseLoopback ) {
+        UidBroadcaster.BroadcastLoopback( uid, port );
+      } else {
+        UidBroadcaster.BroadcastUid( uid, port, IPAddress, NetworkInterface );
+      }
     }
 
     /// <summary>
@@ -183,6 +196,7 @@ namespace OmniUdp {
       OptionSet options = new OptionSet {
         {"interface=", "The network interface from which to broadcast. By default all interfaces are used.", v => NetworkInterface = v},
         {"ip=", "The IP address from which to broadcast. By default all addresses are used.", v => IPAddress = v},
+        {"loopback", "Use only the loopback device. Overrides other options.", v => UseLoopback = true},
         {"h|?|help", "Shows this help message", v => ShowHelp = v != null}
       };
 
