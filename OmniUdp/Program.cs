@@ -61,6 +61,7 @@ namespace OmniUdp {
           Log.InfoFormat( "Broadcasts limited to address '{0}'.", IPAddress );
         }
       } else {
+        Console.WriteLine( "Sending UIDs only on the loopback device!" );
         IPAddress = "127.0.0.1";
       }
 

@@ -67,10 +67,14 @@ namespace OmniUdp {
       }
     }
 
+    /// <summary>
+    ///   "Broadcast" the UID on the loopback device.
+    /// </summary>
+    /// <param name="uid">The UID to broadcast</param>
+    /// <param name="port">The target UDP port that should be used.</param>
     public static void BroadcastLoopback( byte[] uid, int port ) {
-      Socket broadcastSocket = null;
       Log.InfoFormat( "Broadcasting locally..." );
-      broadcastSocket = new Socket( AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp );
+      Socket broadcastSocket = new Socket( AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp );
       broadcastSocket.ReceiveTimeout = (int)TimeSpan.FromSeconds( 10 ).TotalMilliseconds;
       broadcastSocket.SetSocketOption( SocketOptionLevel.Socket, SocketOptionName.Broadcast, 1 );
       broadcastSocket.Bind( new IPEndPoint( IPAddress.Loopback, 0 ) );
