@@ -37,6 +37,11 @@ namespace OmniUdp {
       internal static string Identifier { get; set; }
 
       /// <summary>
+      ///   Encode the UID as an ASCII string before broadcasting.
+      /// </summary>
+      internal static bool Ascii { get; set; }
+
+      /// <summary>
       ///   Should the command line help be displayed?
       /// </summary>
       internal static bool ShowHelp { get; set; }
@@ -56,14 +61,14 @@ namespace OmniUdp {
       }
 
       try {
-        Console.WindowWidth  = 160;
+        Console.WindowWidth = 160;
         Console.WindowHeight = 50;
       } catch( IOException ) {
         // Maybe there is no console window (stream redirection)
       }
 
       // Construct the core application and run it in a separate thread.
-      Application app = new Application( CommandLineOptions.NetworkInterface, CommandLineOptions.IPAddress, CommandLineOptions.UseLoopback, CommandLineOptions.Identifier );
+      Application app = new Application( CommandLineOptions.NetworkInterface, CommandLineOptions.IPAddress, CommandLineOptions.UseLoopback, CommandLineOptions.Identifier, CommandLineOptions.Ascii );
       Thread applicationThread = new Thread( () => ApplicationHandler( app ) );
       applicationThread.Start();
 
@@ -106,6 +111,7 @@ namespace OmniUdp {
         {"ip=", "The IP address from which to broadcast. By default all addresses are used.", v => CommandLineOptions.IPAddress = v},
         {"loopback", "Use only the loopback device. Overrides other options.", v => CommandLineOptions.UseLoopback = true},
         {"identifier=", "The identifier to broadcast with every UID.", v => CommandLineOptions.Identifier = v},
+        {"ascii", "Encode the UID as an ASCII string before broadcasting.", v => CommandLineOptions.Ascii = true},
         {"h|?|help", "Shows this help message", v => CommandLineOptions.ShowHelp = v != null}
       };
 

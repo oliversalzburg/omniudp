@@ -43,6 +43,11 @@ namespace OmniUdp {
     public byte[] Identifier { get; private set; }
 
     /// <summary>
+    ///   Encode the UID as an ASCII string before broadcasting.
+    /// </summary>
+    public bool Ascii { get; private set; }
+
+    /// <summary>
     ///   Construct the application.
     /// </summary>
     /// <param name="networkInterface">
@@ -53,11 +58,13 @@ namespace OmniUdp {
     ///   Use only the loopback device for broadcasting.
     /// </param>
     /// <param name="identifier">A (usually unique) identification token for the reader connected to this OmniUDP instance.</param>
-    public Application( string networkInterface, string ipAddress, bool useLoopback, string identifier ) {
+    /// <param name="ascii"></param>
+    public Application( string networkInterface, string ipAddress, bool useLoopback, string identifier, bool ascii ) {
       UseLoopback = useLoopback;
       NetworkInterface = networkInterface;
       IPAddress = ipAddress;
       Identifier = Encoding.ASCII.GetBytes( identifier );
+      Ascii = ascii;
     }
 
     /// <summary>
@@ -104,7 +111,7 @@ namespace OmniUdp {
         monitor.CardInserted += CardInserted;
 
         foreach( string reader in readernames ) {
-          Log.InfoFormat( "Start monitoring for reader {0}.", reader );
+          Log.InfoFormat( "Start monitoring for reader '{0}'.", reader );
         }
 
         monitor.Start( readernames );
@@ -186,7 +193,15 @@ namespace OmniUdp {
     /// <param name="uid"></param>
     /// <returns></returns>
     private byte[] GetPayload( byte[] uid ) {
+      if( Ascii ) {
+        // Convert the UID value to a hex string representing the value of the UID.
+        string byteString = BitConverter.ToString( uid ).Replace( "-", string.Empty );
+        // Then convert the string back to a byte array.
+        uid = Encoding.ASCII.GetBytes( byteString );
+      }
+
       byte[] payload = uid;
+
       if( null != Identifier ) {
         byte[] delimiter = Encoding.ASCII.GetBytes( "::UID::" );
         payload = BufferUtils.Combine( Identifier, delimiter, uid );
@@ -208,9 +223,8 @@ namespace OmniUdp {
         Array.Copy( uid, shortUid, 4 );
 
         string uidString = BitConverter.ToString( shortUid ).Replace( "-", string.Empty );
-        Log.InfoFormat( "Read UID {0} from {1}.", uidString, args.ReaderName );
+        Log.InfoFormat( "Read UID '{0}' from '{1}'.", uidString, args.ReaderName );
         BroadcastUidEvent( shortUid );
-
       } catch( Exception ex ) {
         Log.Error( ex.Message );
       }
