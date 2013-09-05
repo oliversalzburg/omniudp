@@ -19,7 +19,7 @@ namespace OmniUdp {
     /// <summary>
     ///   Broadcast the provided UID on all interfaces
     /// </summary>
-    /// <param name="uid">The UID to broadcast</param>
+    /// <param name="payload">The payload to broadcast</param>
     /// <param name="port">The target UDP port that should be used.</param>
     /// <param name="limitToAddress">
     ///   Only broadcast from the given IP address. By default, all IP addresses
@@ -31,7 +31,7 @@ namespace OmniUdp {
     /// <exception cref="InvalidOperationException">
     ///   The given IP address isn't assigned to any local network adapter.
     /// </exception>
-    public static void BroadcastUid( byte[] uid, int port, string limitToAddress = null, string limitToInterface = null ) {
+    public static void BroadcastUid( byte[] payload, int port, string limitToAddress = null, string limitToInterface = null ) {
       Dictionary<IPAddress, PhysicalAddress> ipMacTable = IpHelper.BuildIpMacTable( limitToInterface );
       IPAddress[] ipAddresses = ipMacTable.Keys.ToArray();
 
@@ -55,7 +55,7 @@ namespace OmniUdp {
 
           IPEndPoint sendEndPoint = new IPEndPoint( IPAddress.Broadcast, port );
 
-          broadcastSocket.SendTo( uid, sendEndPoint );
+          broadcastSocket.SendTo( payload, sendEndPoint );
         } catch( Exception e ) {
           Log.Error( e.Message );
           Log.Debug( e.StackTrace );
@@ -70,9 +70,9 @@ namespace OmniUdp {
     /// <summary>
     ///   "Broadcast" the UID on the loopback device.
     /// </summary>
-    /// <param name="uid">The UID to broadcast</param>
+    /// <param name="payload">The payload to broadcast</param>
     /// <param name="port">The target UDP port that should be used.</param>
-    public static void BroadcastLoopback( byte[] uid, int port ) {
+    public static void BroadcastLoopback( byte[] payload, int port ) {
       Log.InfoFormat( "Broadcasting locally..." );
       Socket broadcastSocket = new Socket( AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp );
       broadcastSocket.ReceiveTimeout = (int)TimeSpan.FromSeconds( 10 ).TotalMilliseconds;
@@ -81,7 +81,7 @@ namespace OmniUdp {
 
       IPEndPoint sendEndPoint = new IPEndPoint( IPAddress.Broadcast, port );
 
-      broadcastSocket.SendTo( uid, sendEndPoint );
+      broadcastSocket.SendTo( payload, sendEndPoint );
     }
   }
 }

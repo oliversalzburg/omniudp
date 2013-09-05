@@ -32,13 +32,18 @@ namespace OmniUdp {
       internal static bool UseLoopback { get; set; }
 
       /// <summary>
+      ///   The identifier to send with each broadcasted UID.
+      /// </summary>
+      internal static string Identifier { get; set; }
+
+      /// <summary>
       ///   Should the command line help be displayed?
       /// </summary>
       internal static bool ShowHelp { get; set; }
     }
 
     /// <summary>
-    ///   The logging <see langword="interface" />
+    ///   The logging interface.
     /// </summary>
     private static readonly ILog Log = LogManager.GetLogger( System.Reflection.MethodBase.GetCurrentMethod().DeclaringType );
 
@@ -50,8 +55,15 @@ namespace OmniUdp {
         return;
       }
 
+      try {
+        Console.WindowWidth  = 160;
+        Console.WindowHeight = 50;
+      } catch( IOException ) {
+        // Maybe there is no console window (stream redirection)
+      }
+
       // Construct the core application and run it in a separate thread.
-      Application app = new Application( CommandLineOptions.NetworkInterface, CommandLineOptions.IPAddress, CommandLineOptions.UseLoopback );
+      Application app = new Application( CommandLineOptions.NetworkInterface, CommandLineOptions.IPAddress, CommandLineOptions.UseLoopback, CommandLineOptions.Identifier );
       Thread applicationThread = new Thread( () => ApplicationHandler( app ) );
       applicationThread.Start();
 
@@ -70,11 +82,9 @@ namespace OmniUdp {
     private static void ApplicationHandler( Application app ) {
       try {
         app.Run();
-
       } catch( PCSCException ex ) {
         Log.Error( "Unable to get readers. Press any key to exit.", ex );
         Console.ReadKey();
-
       } catch( InvalidOperationException ex ) {
         Log.Error( ex );
         Console.ReadKey();
@@ -95,6 +105,7 @@ namespace OmniUdp {
         {"interface=", "The network interface from which to broadcast. By default all interfaces are used.", v => CommandLineOptions.NetworkInterface = v},
         {"ip=", "The IP address from which to broadcast. By default all addresses are used.", v => CommandLineOptions.IPAddress = v},
         {"loopback", "Use only the loopback device. Overrides other options.", v => CommandLineOptions.UseLoopback = true},
+        {"identifier=", "The identifier to broadcast with every UID.", v => CommandLineOptions.Identifier = v},
         {"h|?|help", "Shows this help message", v => CommandLineOptions.ShowHelp = v != null}
       };
 

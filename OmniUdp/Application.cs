@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 using System.Threading;
 using PCSC;
 using log4net;
@@ -16,7 +17,7 @@ namespace OmniUdp {
     private SCardContext Context { get; set; }
 
     /// <summary>
-    /// Set this signal to notify the application to exit.
+    ///   Set this signal to notify the application to exit.
     /// </summary>
     public ManualResetEvent ExitApplication;
 
@@ -36,21 +37,35 @@ namespace OmniUdp {
     public bool UseLoopback { get; private set; }
 
     /// <summary>
-    /// Construct the application.
+    ///   A (usually unique) identification token for the reader connected to this
+    ///   OmniUDP instance.
     /// </summary>
-    /// <param name="networkInterface">The network interface from which to broadcast.</param>
+    public byte[] Identifier { get; private set; }
+
+    /// <summary>
+    ///   Construct the application.
+    /// </summary>
+    /// <param name="networkInterface">
+    ///   The network <see langword="interface" /> from which to broadcast.
+    /// </param>
     /// <param name="ipAddress">The IP address from which to broadcast.</param>
-    /// <param name="useLoopback">Use only the loopback device for broadcasting.</param>
-    public Application( string networkInterface, string ipAddress, bool useLoopback ) {
+    /// <param name="useLoopback">
+    ///   Use only the loopback device for broadcasting.
+    /// </param>
+    /// <param name="identifier">A (usually unique) identification token for the reader connected to this OmniUDP instance.</param>
+    public Application( string networkInterface, string ipAddress, bool useLoopback, string identifier ) {
       UseLoopback = useLoopback;
       NetworkInterface = networkInterface;
       IPAddress = ipAddress;
+      Identifier = Encoding.ASCII.GetBytes( identifier );
     }
 
     /// <summary>
-    /// Run the application.
+    ///   <see cref="Run" /> the application.
     /// </summary>
-    /// <exception cref="InvalidOperationException">There are currently no readers installed.</exception>
+    /// <exception cref="InvalidOperationException">
+    ///   There are currently no readers installed.
+    /// </exception>
     public void Run() {
       if( !UseLoopback ) {
         if( null != NetworkInterface ) {
@@ -66,6 +81,10 @@ namespace OmniUdp {
       } else {
         Log.InfoFormat( "Sending UIDs only on the loopback device!" );
         IPAddress = "127.0.0.1";
+      }
+
+      if( Identifier.Length != 0 ) {
+        Log.InfoFormat( "Using identifier '{0}'.", Encoding.ASCII.GetString( Identifier ) );
       }
 
       // Retrieve the names of all installed readers.
@@ -87,7 +106,7 @@ namespace OmniUdp {
         foreach( string reader in readernames ) {
           Log.InfoFormat( "Start monitoring for reader {0}.", reader );
         }
-        
+
         monitor.Start( readernames );
 
         // Wait for the parent application to signal us to exit.
@@ -150,11 +169,29 @@ namespace OmniUdp {
     /// <param name="uid">The UID that should be broadcast.</param>
     /// <param name="port">The UDP port to use.</param>
     private void BroadcastUidEvent( byte[] uid, int port = 30000 ) {
+      byte[] payload = GetPayload( uid );
+
+      Log.InfoFormat( "Using payload '{0}'.", BitConverter.ToString( payload ).Replace( "-", string.Empty ) );
+
       if( UseLoopback ) {
-        UidBroadcaster.BroadcastLoopback( uid, port );
+        UidBroadcaster.BroadcastLoopback( payload, port );
       } else {
-        UidBroadcaster.BroadcastUid( uid, port, IPAddress, NetworkInterface );
+        UidBroadcaster.BroadcastUid( payload, port, IPAddress, NetworkInterface );
       }
+    }
+
+    /// <summary>
+    ///   Constructs the complete payload
+    /// </summary>
+    /// <param name="uid"></param>
+    /// <returns></returns>
+    private byte[] GetPayload( byte[] uid ) {
+      byte[] payload = uid;
+      if( null != Identifier ) {
+        byte[] delimiter = Encoding.ASCII.GetBytes( "::UID::" );
+        payload = BufferUtils.Combine( Identifier, delimiter, uid );
+      }
+      return payload;
     }
 
     /// <summary>
@@ -170,10 +207,10 @@ namespace OmniUdp {
         byte[] shortUid = new byte[4];
         Array.Copy( uid, shortUid, 4 );
 
-        string uidString = BitConverter.ToString( shortUid );
-
-        Log.Info( uidString );
+        string uidString = BitConverter.ToString( shortUid ).Replace( "-", string.Empty );
+        Log.InfoFormat( "Read UID {0} from {1}.", uidString, args.ReaderName );
         BroadcastUidEvent( shortUid );
+
       } catch( Exception ex ) {
         Log.Error( ex.Message );
       }
