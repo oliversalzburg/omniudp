@@ -63,7 +63,7 @@ namespace OmniUdp {
       UseLoopback = useLoopback;
       NetworkInterface = networkInterface;
       IPAddress = ipAddress;
-      Identifier = Encoding.ASCII.GetBytes( identifier );
+      Identifier = (identifier != null) ? Encoding.ASCII.GetBytes(identifier) : null;
       Ascii = ascii;
     }
 
