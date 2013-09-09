@@ -90,7 +90,7 @@ namespace OmniUdp {
         IPAddress = "127.0.0.1";
       }
 
-      if( Identifier.Length != 0 ) {
+      if( null != Identifier && Identifier.Length != 0 ) {
         Log.InfoFormat( "Using identifier '{0}'.", Encoding.ASCII.GetString( Identifier ) );
       }
 
