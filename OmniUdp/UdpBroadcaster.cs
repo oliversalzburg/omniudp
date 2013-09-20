@@ -10,14 +10,14 @@ namespace OmniUdp {
   /// <summary>
   ///   Allows for simple data packet broadcasting via UDP
   /// </summary>
-  internal static class UidBroadcaster {
+  internal static class UdpBroadcaster {
     /// <summary>
     ///   The logging <see langword="interface" />
     /// </summary>
     private static readonly ILog Log = LogManager.GetLogger( System.Reflection.MethodBase.GetCurrentMethod().DeclaringType );
 
     /// <summary>
-    ///   Broadcast the provided UID on all interfaces
+    ///   Broadcast the provided payload on all interfaces
     /// </summary>
     /// <param name="payload">The payload to broadcast</param>
     /// <param name="port">The target UDP port that should be used.</param>
@@ -31,7 +31,7 @@ namespace OmniUdp {
     /// <exception cref="InvalidOperationException">
     ///   The given IP address isn't assigned to any local network adapter.
     /// </exception>
-    public static void BroadcastUid( byte[] payload, int port, string limitToAddress = null, string limitToInterface = null ) {
+    public static void Broadcast( byte[] payload, int port, string limitToAddress = null, string limitToInterface = null ) {
       Dictionary<IPAddress, PhysicalAddress> ipMacTable = IpHelper.BuildIpMacTable( limitToInterface );
       IPAddress[] ipAddresses = ipMacTable.Keys.ToArray();
 
@@ -39,6 +39,7 @@ namespace OmniUdp {
         IPAddress ipAddress = ipAddresses.SingleOrDefault( i => i.ToString() == limitToAddress );
         if( null == ipAddress ) {
           throw new InvalidOperationException( "The given IP address isn't assigned to any local network adapter." );
+
         } else {
           ipAddresses = new[] {ipAddress};
         }
@@ -56,9 +57,11 @@ namespace OmniUdp {
           IPEndPoint sendEndPoint = new IPEndPoint( IPAddress.Broadcast, port );
 
           broadcastSocket.SendTo( payload, sendEndPoint );
+
         } catch( Exception e ) {
           Log.Error( e.Message );
           Log.Debug( e.StackTrace );
+
         } finally {
           if( null != broadcastSocket ) {
             broadcastSocket.Close();
