@@ -181,9 +181,9 @@ namespace OmniUdp {
       Log.InfoFormat( "Using payload '{0}'.", BitConverter.ToString( payload ).Replace( "-", string.Empty ) );
 
       if( UseLoopback ) {
-        UidBroadcaster.BroadcastLoopback( payload, port );
+        UdpBroadcaster.BroadcastLoopback( payload, port );
       } else {
-        UidBroadcaster.BroadcastUid( payload, port, IPAddress, NetworkInterface );
+        UdpBroadcaster.Broadcast( payload, port, IPAddress, NetworkInterface );
       }
     }
 

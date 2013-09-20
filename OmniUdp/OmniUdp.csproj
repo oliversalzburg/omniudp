@@ -54,7 +54,7 @@
     <Compile Include="IpHelper.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="UidBroadcaster.cs" />
+    <Compile Include="UdpBroadcaster.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
