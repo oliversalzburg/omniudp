@@ -6,6 +6,12 @@ using log4net;
 
 namespace OmniUdp {
   internal class Application {
+
+    /// <summary>
+    /// The default UDP port to use for broadcasts.
+    /// </summary>
+    private const int DefaultPort = 30000;
+
     /// <summary>
     ///   The logging <see langword="interface" />
     /// </summary>
@@ -171,12 +177,12 @@ namespace OmniUdp {
     }
 
     /// <summary>
-    ///   Sends out a UDP broadcast containing the UID
+    ///   Sends out a UDP broadcast containing the UID.
     /// </summary>
     /// <param name="uid">The UID that should be broadcast.</param>
     /// <param name="port">The UDP port to use.</param>
-    private void BroadcastUidEvent( byte[] uid, int port = 30000 ) {
-      byte[] payload = GetPayload( uid );
+    private void BroadcastUidEvent( byte[] uid, int port = DefaultPort ) {
+      byte[] payload = GetPayload( uid, "::UID::" );
 
       Log.InfoFormat( "Using payload '{0}'.", BitConverter.ToString( payload ).Replace( "-", string.Empty ) );
 
@@ -188,23 +194,41 @@ namespace OmniUdp {
     }
 
     /// <summary>
-    ///   Constructs the complete payload
+    /// Sends out a UDP broadcast containing an error code.
     /// </summary>
-    /// <param name="uid"></param>
+    /// <param name="errorCode"></param>
+    /// <param name="port"></param>
+    private void BroadcastErrorEvent( byte[] errorCode, int port = DefaultPort ) {
+      byte[] payload = GetPayload( errorCode, "::ERROR::" );
+
+      Log.InfoFormat( "Using payload '{0}'.", BitConverter.ToString( payload ).Replace( "-", string.Empty ) );
+
+      if( UseLoopback ) {
+        UdpBroadcaster.BroadcastLoopback( payload, port );
+      } else {
+        UdpBroadcaster.Broadcast( payload, port, IPAddress, NetworkInterface );
+      }
+    }
+
+    /// <summary>
+    ///   Constructs the complete payload.
+    /// </summary>
+    /// <param name="data">The data to put into the payload.</param>
+    /// <param name="delimiter">An optional delimiter to put between the data and the identfier for this instance.</param>
     /// <returns></returns>
-    private byte[] GetPayload( byte[] uid ) {
+    private byte[] GetPayload( byte[] data, string delimiter = "::::" ) {
       if( Ascii ) {
         // Convert the UID value to a hex string representing the value of the UID.
-        string byteString = BitConverter.ToString( uid ).Replace( "-", string.Empty );
+        string byteString = BitConverter.ToString( data ).Replace( "-", string.Empty );
         // Then convert the string back to a byte array.
-        uid = Encoding.ASCII.GetBytes( byteString );
+        data = Encoding.ASCII.GetBytes( byteString );
       }
 
-      byte[] payload = uid;
+      byte[] payload = data;
 
       if( null != Identifier ) {
-        byte[] delimiter = Encoding.ASCII.GetBytes( "::UID::" );
-        payload = BufferUtils.Combine( Identifier, delimiter, uid );
+        byte[] delimiterBytes = Encoding.ASCII.GetBytes( delimiter ?? "::::" );
+        payload = BufferUtils.Combine( Identifier, delimiterBytes, data );
       }
       return payload;
     }
@@ -215,6 +239,7 @@ namespace OmniUdp {
     /// <param name="sender"></param>
     /// <param name="args"></param>
     private void CardInserted( object sender, CardStatusEventArgs args ) {
+      Log.Info( "Card detected." );
       try {
         byte[] uid = UidFromConnectedCard( args.ReaderName );
 
@@ -225,8 +250,10 @@ namespace OmniUdp {
         string uidString = BitConverter.ToString( shortUid ).Replace( "-", string.Empty );
         Log.InfoFormat( "Read UID '{0}' from '{1}'.", uidString, args.ReaderName );
         BroadcastUidEvent( shortUid );
+
       } catch( Exception ex ) {
         Log.Error( ex.Message );
+        BroadcastErrorEvent( new byte[] {0} );
       }
     }
   }
