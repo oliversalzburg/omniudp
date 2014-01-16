@@ -54,6 +54,11 @@ namespace OmniUdp {
     public bool Ascii { get; private set; }
 
     /// <summary>
+    ///   Was the application instance destroyed?
+    /// </summary>
+    public bool Destroyed { get; set; }
+
+    /// <summary>
     ///   Construct the application.
     /// </summary>
     /// <param name="networkInterface">
@@ -71,6 +76,7 @@ namespace OmniUdp {
       IPAddress = ipAddress;
       Identifier = (identifier != null) ? Encoding.ASCII.GetBytes(identifier) : null;
       Ascii = ascii;
+      Destroyed = false;
     }
 
     /// <summary>

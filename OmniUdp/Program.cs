@@ -73,11 +73,29 @@ namespace OmniUdp {
       applicationThread.Start();
 
       // Let the program run until the user presses a key
-      Console.Title = "Press any key to exit.";
-      Console.ReadKey();
+      Console.Title = "Press ESC to exit.";
+
+      bool exitApplication = false;
+      do {
+        if( Console.KeyAvailable ) {
+          ConsoleKey consoleKey = Console.ReadKey( true ).Key;
+          if( ConsoleKey.Escape == consoleKey ) {
+            exitApplication = true;
+          }
+
+        } else {
+          if( app.Destroyed ) {
+            break;
+          }
+          Thread.Sleep( TimeSpan.FromSeconds( 1.0 ) );
+        }
+        
+      } while( !exitApplication );
 
       // Signal the application thread to exit.
-      app.ExitApplication.Set();
+      if( null != app.ExitApplication ) {
+        app.ExitApplication.Set();
+      }
     }
 
     /// <summary>
@@ -93,6 +111,8 @@ namespace OmniUdp {
       } catch( InvalidOperationException ex ) {
         Log.Error( ex );
         Console.ReadKey();
+      } finally {
+        app.Destroyed = true;
       }
     }
 
