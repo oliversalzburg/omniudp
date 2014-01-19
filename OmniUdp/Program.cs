@@ -74,7 +74,10 @@ namespace OmniUdp {
       }
 
       // Construct the core application and run it in a separate thread.
-      Application app = new Application( CommandLineOptions.NetworkInterface, CommandLineOptions.IPAddress, CommandLineOptions.UseLoopback, CommandLineOptions.Identifier, CommandLineOptions.Ascii, CommandLineOptions.DemoMode );
+      Application app = CommandLineOptions.DemoMode
+                          ? new DemoApplication( CommandLineOptions.NetworkInterface, CommandLineOptions.IPAddress, CommandLineOptions.UseLoopback, CommandLineOptions.Identifier, CommandLineOptions.Ascii )
+                          : new Application( CommandLineOptions.NetworkInterface, CommandLineOptions.IPAddress, CommandLineOptions.UseLoopback, CommandLineOptions.Identifier, CommandLineOptions.Ascii );
+
       Thread applicationThread = new Thread( () => ApplicationHandler( app ) );
       applicationThread.Start();
 
@@ -84,10 +87,12 @@ namespace OmniUdp {
       bool exitApplication = false;
       do {
         if( Console.KeyAvailable ) {
-          ConsoleKey consoleKey = Console.ReadKey( true ).Key;
+          ConsoleKeyInfo consoleKeyInfo = Console.ReadKey( true );
+          ConsoleKey consoleKey = consoleKeyInfo.Key;
           if( ConsoleKey.Escape == consoleKey ) {
             exitApplication = true;
           }
+          app.HandleKeyboardInput( consoleKeyInfo );
 
         } else {
           if( app.Destroyed ) {
@@ -95,7 +100,6 @@ namespace OmniUdp {
           }
           Thread.Sleep( TimeSpan.FromSeconds( 1.0 ) );
         }
-        
       } while( !exitApplication );
 
       // Signal the application thread to exit.
@@ -111,9 +115,6 @@ namespace OmniUdp {
     private static void ApplicationHandler( Application app ) {
       try {
         app.Run();
-      } catch( PCSCException ex ) {
-        Log.Error( "Unable to get readers. Press any key to exit.", ex );
-        Console.ReadKey();
       } catch( InvalidOperationException ex ) {
         Log.Error( ex );
         Console.ReadKey();
