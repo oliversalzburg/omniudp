@@ -65,13 +65,43 @@ namespace OmniUdp {
         case ConsoleKey.D0:
           SimulateCardEvent( new byte[] {0, 0, 0, 0} );
           break;
+        case ConsoleKey.D1:
+          SimulateCardEvent( new byte[] {0, 0, 0, 1} );
+          break;
+        case ConsoleKey.D2:
+          SimulateCardEvent( new byte[] {0, 0, 0, 2} );
+          break;
+        case ConsoleKey.D3:
+          SimulateCardEvent( new byte[] {0, 0, 0, 3} );
+          break;
+        case ConsoleKey.D4:
+          SimulateCardEvent( new byte[] {0, 0, 0, 4} );
+          break;
+        case ConsoleKey.D5:
+          SimulateCardEvent( new byte[] {0, 0, 0, 5} );
+          break;
+        case ConsoleKey.D6:
+          SimulateCardEvent( new byte[] {0, 0, 0, 6} );
+          break;
+        case ConsoleKey.D7:
+          SimulateCardEvent( new byte[] {0, 0, 0, 7} );
+          break;
+        case ConsoleKey.D8:
+          SimulateCardEvent( new byte[] {0, 0, 0, 8} );
+          break;
+        case ConsoleKey.D9:
+          SimulateCardEvent( new byte[] {0, 0, 0, 9} );
+          break;
+        case ConsoleKey.E:
+          SimulateErrorEvent();
+          break;
         default:
           break;
       }
     }
 
     /// <summary>
-    /// Simulate a card being inserted and process the given UID as if it was present in the reader.
+    ///   Simulate a card being inserted and process the given UID as if it was present in the reader.
     /// </summary>
     /// <param name="shortUid">The UID as it was supposed to be read from the reader.</param>
     private void SimulateCardEvent( byte[] shortUid ) {
@@ -84,6 +114,14 @@ namespace OmniUdp {
         Log.Error( ex.Message );
         BroadcastErrorEvent( new byte[] {0} );
       }
+    }
+
+    /// <summary>
+    ///   Simulate an error during a card reading event.
+    /// </summary>
+    private void SimulateErrorEvent() {
+      Log.Info( "Simulating error event." );
+      BroadcastErrorEvent( new byte[] {0} );
     }
   }
 }
