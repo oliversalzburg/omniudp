@@ -5,10 +5,12 @@ using PCSC;
 using log4net;
 
 namespace OmniUdp {
+  /// <summary>
+  ///   The actual application logic.
+  /// </summary>
   internal class Application {
-
     /// <summary>
-    /// The default UDP port to use for broadcasts.
+    ///   The default UDP port to use for broadcasts.
     /// </summary>
     private const int DefaultPort = 30000;
 
@@ -54,6 +56,11 @@ namespace OmniUdp {
     public bool Ascii { get; private set; }
 
     /// <summary>
+    ///   Are we running in demo mode?
+    /// </summary>
+    public bool DemoMode { get; private set; }
+
+    /// <summary>
     ///   Was the application instance destroyed?
     /// </summary>
     public bool Destroyed { get; set; }
@@ -69,13 +76,15 @@ namespace OmniUdp {
     ///   Use only the loopback device for broadcasting.
     /// </param>
     /// <param name="identifier">A (usually unique) identification token for the reader connected to this OmniUDP instance.</param>
-    /// <param name="ascii"></param>
-    public Application( string networkInterface, string ipAddress, bool useLoopback, string identifier, bool ascii ) {
+    /// <param name="ascii">Should the UID be encoded as ASCII inside the payload?</param>
+    /// <param name="demo">Are we running in demo mode?</param>
+    public Application( string networkInterface, string ipAddress, bool useLoopback, string identifier, bool ascii, bool demo ) {
       UseLoopback = useLoopback;
       NetworkInterface = networkInterface;
       IPAddress = ipAddress;
-      Identifier = (identifier != null) ? Encoding.ASCII.GetBytes(identifier) : null;
+      Identifier = ( identifier != null ) ? Encoding.ASCII.GetBytes( identifier ) : null;
       Ascii = ascii;
+      DemoMode = demo;
       Destroyed = false;
     }
 
@@ -110,11 +119,22 @@ namespace OmniUdp {
       using( Context = new SCardContext() ) {
         Context.Establish( SCardScope.System );
 
-        string[] readernames = Context.GetReaders();
+        string[] readernames = null;
+        try {
+          readernames = Context.GetReaders();
 
-        if( null == readernames || 0 == readernames.Length ) {
-          throw new InvalidOperationException( "There are currently no readers installed." );
+        } catch( PCSCException ) {
+          
+        } finally {
+          if( null == readernames || 0 == readernames.Length ) {
+            if( DemoMode ) {
+              Log.Error( "There are currently no readers installed." );
+            } else {
+              throw new InvalidOperationException( "There are currently no readers installed." );
+            }
+          }
         }
+
 
         // Create a monitor object with its own PC/SC context.
         SCardMonitor monitor = new SCardMonitor( new SCardContext(), SCardScope.System );
@@ -122,11 +142,13 @@ namespace OmniUdp {
         // Point the callback function(s) to the static defined methods below.
         monitor.CardInserted += CardInserted;
 
-        foreach( string reader in readernames ) {
-          Log.InfoFormat( "Start monitoring for reader '{0}'.", reader );
-        }
+        if( null != readernames ) {
+          foreach( string reader in readernames ) {
+            Log.InfoFormat( "Start monitoring for reader '{0}'.", reader );
+          }
 
-        monitor.Start( readernames );
+          monitor.Start( readernames );
+        }
 
         // Wait for the parent application to signal us to exit.
         ExitApplication = new ManualResetEvent( false );
@@ -200,7 +222,7 @@ namespace OmniUdp {
     }
 
     /// <summary>
-    /// Sends out a UDP broadcast containing an error code.
+    ///   Sends out a UDP broadcast containing an error code.
     /// </summary>
     /// <param name="errorCode"></param>
     /// <param name="port"></param>
@@ -256,7 +278,6 @@ namespace OmniUdp {
         string uidString = BitConverter.ToString( shortUid ).Replace( "-", string.Empty );
         Log.InfoFormat( "Read UID '{0}' from '{1}'.", uidString, args.ReaderName );
         BroadcastUidEvent( shortUid );
-
       } catch( Exception ex ) {
         Log.Error( ex.Message );
         BroadcastErrorEvent( new byte[] {0} );
