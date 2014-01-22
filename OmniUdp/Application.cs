@@ -5,10 +5,12 @@ using PCSC;
 using log4net;
 
 namespace OmniUdp {
+  /// <summary>
+  ///   The actual application logic.
+  /// </summary>
   internal class Application {
-
     /// <summary>
-    /// The default UDP port to use for broadcasts.
+    ///   The default UDP port to use for broadcasts.
     /// </summary>
     private const int DefaultPort = 30000;
 
@@ -20,7 +22,7 @@ namespace OmniUdp {
     /// <summary>
     ///   Smart card handling context
     /// </summary>
-    private SCardContext Context { get; set; }
+    protected SCardContext Context { get; set; }
 
     /// <summary>
     ///   Set this signal to notify the application to exit.
@@ -54,6 +56,11 @@ namespace OmniUdp {
     public bool Ascii { get; private set; }
 
     /// <summary>
+    ///   Was the application instance destroyed?
+    /// </summary>
+    public bool Destroyed { get; set; }
+
+    /// <summary>
     ///   Construct the application.
     /// </summary>
     /// <param name="networkInterface">
@@ -64,21 +71,19 @@ namespace OmniUdp {
     ///   Use only the loopback device for broadcasting.
     /// </param>
     /// <param name="identifier">A (usually unique) identification token for the reader connected to this OmniUDP instance.</param>
-    /// <param name="ascii"></param>
+    /// <param name="ascii">Should the UID be encoded as ASCII inside the payload?</param>
     public Application( string networkInterface, string ipAddress, bool useLoopback, string identifier, bool ascii ) {
       UseLoopback = useLoopback;
       NetworkInterface = networkInterface;
       IPAddress = ipAddress;
-      Identifier = (identifier != null) ? Encoding.ASCII.GetBytes(identifier) : null;
+      Identifier = ( identifier != null ) ? Encoding.ASCII.GetBytes( identifier ) : null;
       Ascii = ascii;
+      Destroyed = false;
     }
 
     /// <summary>
     ///   <see cref="Run" /> the application.
     /// </summary>
-    /// <exception cref="InvalidOperationException">
-    ///   There are currently no readers installed.
-    /// </exception>
     public void Run() {
       if( !UseLoopback ) {
         if( null != NetworkInterface ) {
@@ -100,14 +105,27 @@ namespace OmniUdp {
         Log.InfoFormat( "Using identifier '{0}'.", Encoding.ASCII.GetString( Identifier ) );
       }
 
+      ExecuteContext();
+    }
+
+    /// <summary>
+    ///   Create UID reader context and wait for events.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">
+    ///   There are currently no readers installed.
+    /// </exception>
+    protected virtual void ExecuteContext() {
       // Retrieve the names of all installed readers.
       using( Context = new SCardContext() ) {
         Context.Establish( SCardScope.System );
 
-        string[] readernames = Context.GetReaders();
-
-        if( null == readernames || 0 == readernames.Length ) {
-          throw new InvalidOperationException( "There are currently no readers installed." );
+        string[] readernames = null;
+        try {
+          readernames = Context.GetReaders();
+        } catch( PCSCException ) {} finally {
+          if( null == readernames || 0 == readernames.Length ) {
+            throw new InvalidOperationException( "There are currently no readers installed." );
+          }
         }
 
         // Create a monitor object with its own PC/SC context.
@@ -181,7 +199,7 @@ namespace OmniUdp {
     /// </summary>
     /// <param name="uid">The UID that should be broadcast.</param>
     /// <param name="port">The UDP port to use.</param>
-    private void BroadcastUidEvent( byte[] uid, int port = DefaultPort ) {
+    protected void BroadcastUidEvent( byte[] uid, int port = DefaultPort ) {
       byte[] payload = GetPayload( uid, "::UID::" );
 
       Log.InfoFormat( "Using payload '{0}'.", BitConverter.ToString( payload ).Replace( "-", string.Empty ) );
@@ -194,11 +212,11 @@ namespace OmniUdp {
     }
 
     /// <summary>
-    /// Sends out a UDP broadcast containing an error code.
+    ///   Sends out a UDP broadcast containing an error code.
     /// </summary>
     /// <param name="errorCode"></param>
     /// <param name="port"></param>
-    private void BroadcastErrorEvent( byte[] errorCode, int port = DefaultPort ) {
+    protected void BroadcastErrorEvent( byte[] errorCode, int port = DefaultPort ) {
       byte[] payload = GetPayload( errorCode, "::ERROR::" );
 
       Log.InfoFormat( "Using payload '{0}'.", BitConverter.ToString( payload ).Replace( "-", string.Empty ) );
@@ -238,7 +256,7 @@ namespace OmniUdp {
     /// </summary>
     /// <param name="sender"></param>
     /// <param name="args"></param>
-    private void CardInserted( object sender, CardStatusEventArgs args ) {
+    protected void CardInserted( object sender, CardStatusEventArgs args ) {
       Log.Info( "Card detected." );
       try {
         byte[] uid = UidFromConnectedCard( args.ReaderName );
@@ -250,11 +268,16 @@ namespace OmniUdp {
         string uidString = BitConverter.ToString( shortUid ).Replace( "-", string.Empty );
         Log.InfoFormat( "Read UID '{0}' from '{1}'.", uidString, args.ReaderName );
         BroadcastUidEvent( shortUid );
-
       } catch( Exception ex ) {
         Log.Error( ex.Message );
         BroadcastErrorEvent( new byte[] {0} );
       }
     }
+
+    /// <summary>
+    ///   Handle keyboard input from the main application.
+    /// </summary>
+    /// <param name="key">The key information that was recorded.</param>
+    public virtual void HandleKeyboardInput( ConsoleKeyInfo key ) {}
   }
 }
