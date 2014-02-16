@@ -71,6 +71,8 @@ namespace OmniUdp {
         Console.WindowHeight = 50;
       } catch( IOException ) {
         // Maybe there is no console window (stream redirection)
+      } catch( NotSupportedException ) {
+        // Can be thrown by Mono runtime
       }
 
       // Construct the core application and run it in a separate thread.
