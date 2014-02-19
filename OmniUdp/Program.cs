@@ -6,6 +6,7 @@ using System.Threading;
 using NDesk.Options;
 using PCSC;
 using log4net;
+using OmniUdp.Handler;
 
 namespace OmniUdp {
   /// <summary>
@@ -75,10 +76,18 @@ namespace OmniUdp {
         // Can be thrown by Mono runtime
       }
 
+      // If no REST API endpoint was configured, use UDP broadcasting.
+      if( string.IsNullOrEmpty( CommandLineOptions.RestEndpoint ) ) {
+        CommandLineOptions.UseBroadcast = true;
+      }
+
+      // Construct the appropriate event handling strategy.
+      IEventHandlingStrategy eventHandlingStrategy = new UdpBroadcastStrategy( CommandLineOptions.NetworkInterface, CommandLineOptions.IPAddress, CommandLineOptions.UseLoopback );
+
       // Construct the core application and run it in a separate thread.
       Application app = CommandLineOptions.DemoMode
-                          ? new DemoApplication( CommandLineOptions.NetworkInterface, CommandLineOptions.IPAddress, CommandLineOptions.UseLoopback, CommandLineOptions.Identifier, CommandLineOptions.Ascii )
-                          : new Application( CommandLineOptions.NetworkInterface, CommandLineOptions.IPAddress, CommandLineOptions.UseLoopback, CommandLineOptions.Identifier, CommandLineOptions.Ascii );
+                          ? new DemoApplication( CommandLineOptions.Identifier, CommandLineOptions.Ascii, eventHandlingStrategy )
+                          : new Application( CommandLineOptions.Identifier, CommandLineOptions.Ascii, eventHandlingStrategy );
 
       Thread applicationThread = new Thread( () => ApplicationHandler( app ) );
       applicationThread.Start();

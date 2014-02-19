@@ -3,6 +3,7 @@ using System.Text;
 using System.Threading;
 using PCSC;
 using log4net;
+using OmniUdp.Handler;
 
 namespace OmniUdp {
   /// <summary>
@@ -10,9 +11,9 @@ namespace OmniUdp {
   /// </summary>
   internal class Application {
     /// <summary>
-    ///   The default UDP port to use for broadcasts.
+    ///   The event handler for the application.
     /// </summary>
-    private const int DefaultPort = 30000;
+    protected IEventHandlingStrategy ApplicationEventHandler { get; set; }
 
     /// <summary>
     ///   The logging <see langword="interface" />
@@ -28,21 +29,6 @@ namespace OmniUdp {
     ///   Set this signal to notify the application to exit.
     /// </summary>
     public ManualResetEvent ExitApplication;
-
-    /// <summary>
-    ///   The network interface from which to broadcast.
-    /// </summary>
-    public string NetworkInterface { get; private set; }
-
-    /// <summary>
-    ///   The IP address from which to broadcast.
-    /// </summary>
-    public string IPAddress { get; private set; }
-
-    /// <summary>
-    ///   Use only the loopback device for broadcasting.
-    /// </summary>
-    public bool UseLoopback { get; private set; }
 
     /// <summary>
     ///   A (usually unique) identification token for the reader connected to this
@@ -63,21 +49,18 @@ namespace OmniUdp {
     /// <summary>
     ///   Construct the application.
     /// </summary>
-    /// <param name="networkInterface">
-    ///   The network <see langword="interface" /> from which to broadcast.
-    /// </param>
-    /// <param name="ipAddress">The IP address from which to broadcast.</param>
-    /// <param name="useLoopback">
-    ///   Use only the loopback device for broadcasting.
-    /// </param>
     /// <param name="identifier">A (usually unique) identification token for the reader connected to this OmniUDP instance.</param>
     /// <param name="ascii">Should the UID be encoded as ASCII inside the payload?</param>
-    public Application( string networkInterface, string ipAddress, bool useLoopback, string identifier, bool ascii ) {
-      UseLoopback = useLoopback;
-      NetworkInterface = networkInterface;
-      IPAddress = ipAddress;
+    public Application( string identifier, bool ascii, IEventHandlingStrategy eventHandlingStrategy ) {
+      // Event Handling Strategy cannot be null
+      if( null == eventHandlingStrategy ) {
+        throw new ArgumentNullException( "eventHandlingStrategy" );
+      }
+
       Identifier = ( identifier != null ) ? Encoding.ASCII.GetBytes( identifier ) : null;
       Ascii = ascii;
+      ApplicationEventHandler = eventHandlingStrategy;
+
       Destroyed = false;
     }
 
@@ -85,22 +68,6 @@ namespace OmniUdp {
     ///   <see cref="Run" /> the application.
     /// </summary>
     public void Run() {
-      if( !UseLoopback ) {
-        if( null != NetworkInterface ) {
-          if( !IpHelper.DoesInterfaceExist( NetworkInterface ) ) {
-            Console.Error.WriteLine( "The given interface '{0}' does not exist on the local system.", NetworkInterface );
-            return;
-          }
-          Log.InfoFormat( "Broadcasts limited to interface '{0}'.", NetworkInterface );
-        }
-        if( null != IPAddress ) {
-          Log.InfoFormat( "Broadcasts limited to address '{0}'.", IPAddress );
-        }
-      } else {
-        Log.InfoFormat( "Sending UIDs only on the loopback device!" );
-        IPAddress = "127.0.0.1";
-      }
-
       if( null != Identifier && Identifier.Length != 0 ) {
         Log.InfoFormat( "Using identifier '{0}'.", Encoding.ASCII.GetString( Identifier ) );
       }
@@ -199,16 +166,12 @@ namespace OmniUdp {
     /// </summary>
     /// <param name="uid">The UID that should be broadcast.</param>
     /// <param name="port">The UDP port to use.</param>
-    protected void BroadcastUidEvent( byte[] uid, int port = DefaultPort ) {
+    protected void BroadcastUidEvent( byte[] uid ) {
       byte[] payload = GetPayload( uid, "::UID::" );
 
       Log.InfoFormat( "Using payload '{0}'.", BitConverter.ToString( payload ).Replace( "-", string.Empty ) );
 
-      if( UseLoopback ) {
-        UdpBroadcaster.BroadcastLoopback( payload, port );
-      } else {
-        UdpBroadcaster.Broadcast( payload, port, IPAddress, NetworkInterface );
-      }
+      ApplicationEventHandler.HandleUidEvent( payload );
     }
 
     /// <summary>
@@ -216,16 +179,12 @@ namespace OmniUdp {
     /// </summary>
     /// <param name="errorCode"></param>
     /// <param name="port"></param>
-    protected void BroadcastErrorEvent( byte[] errorCode, int port = DefaultPort ) {
+    protected void BroadcastErrorEvent( byte[] errorCode ) {
       byte[] payload = GetPayload( errorCode, "::ERROR::" );
 
       Log.InfoFormat( "Using payload '{0}'.", BitConverter.ToString( payload ).Replace( "-", string.Empty ) );
 
-      if( UseLoopback ) {
-        UdpBroadcaster.BroadcastLoopback( payload, port );
-      } else {
-        UdpBroadcaster.Broadcast( payload, port, IPAddress, NetworkInterface );
-      }
+      ApplicationEventHandler.HandleErrorEvent( payload );
     }
 
     /// <summary>
