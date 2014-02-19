@@ -17,7 +17,10 @@ namespace OmniUdp.Handler {
     /// </summary>
     private readonly ILog Log = LogManager.GetLogger( System.Reflection.MethodBase.GetCurrentMethod().DeclaringType );
 
-    public StringFormatter PreferredFormatter { get; private set; }
+    /// <summary>
+    ///   The formatter to use to format the payload.
+    /// </summary>
+    public JsonFormatter PreferredFormatter { get; private set; }
 
     /// <summary>
     ///   The RESTful API endpoint to use.
@@ -34,7 +37,7 @@ namespace OmniUdp.Handler {
     /// </summary>
     /// <param name="endpoint">The API endpoint to connect to.</param>
     /// <param name="formatter">The formatter to use to format the payloads.</param>
-    public RestEndpointStrategy( string endpoint, StringFormatter formatter ) {
+    public RestEndpointStrategy( string endpoint, JsonFormatter formatter ) {
       PreferredFormatter = formatter;
 
       Endpoint = endpoint;
@@ -55,11 +58,8 @@ namespace OmniUdp.Handler {
     /// </summary>
     /// <param name="payload">The payload to send with the event.</param>
     public void HandleErrorEvent( byte[] error ) {
-      string payload = PreferredFormatter.GetPayload( error, "::ERROR::" );
-
-      Log.InfoFormat( "Using payload '{0}'.", payload );
-
-      throw new NotImplementedException();
+      string payload = PreferredFormatter.GetPayloadForError( error );
+      SendPayload( payload );
     }
 
     /// <summary>
@@ -67,24 +67,25 @@ namespace OmniUdp.Handler {
     /// </summary>
     /// <param name="payload">The payload to send with the event.</param>
     public void HandleUidEvent( byte[] uid ) {
+      string payload = PreferredFormatter.GetPayload( uid );
+      SendPayload( payload );
+    }
 
-      string payload = PreferredFormatter.GetPayload( uid, "::UID::" );
-
-      string JsonData = String.Format(
-        "{{ \"data\": \"{0}\" }}",
-         payload
-        );
-      
+    /// <summary>
+    ///   Sends a payload to the API endpoint.
+    /// </summary>
+    /// <param name="payload">The payload to send.</param>
+    private void SendPayload( string payload ) {
       HttpWebRequest request = (HttpWebRequest)( HttpWebRequest.Create( EndpointUri ) );
       request.Method = "POST";
       request.ContentType = "application/json";
-      request.ContentLength = JsonData.Length;
+      request.ContentLength = payload.Length;
       try {
 
         using( Stream requestStream = request.GetRequestStream() ) {
           using( StreamWriter writer = new StreamWriter( requestStream ) ) {
-            Log.InfoFormat( "Using JSON Payload: '{0}'", JsonData );
-            writer.Write( JsonData );
+            Log.InfoFormat( "Using JSON Payload: '{0}'", payload );
+            writer.Write( payload );
           }
         }
 

@@ -92,7 +92,7 @@ namespace OmniUdp.Handler {
     /// </summary>
     /// <param name="payload">The payload to send with the event.</param>
     public void HandleErrorEvent( byte[] error ) {
-      byte[] payload = PreferredFormatter.GetPayload( error, "::ERROR::" );
+      byte[] payload = PreferredFormatter.GetPayloadForError( error );
 
       Log.InfoFormat( "Using payload '{0}'.", BitConverter.ToString( payload ).Replace( "-", string.Empty ) );
 
@@ -109,7 +109,7 @@ namespace OmniUdp.Handler {
     /// </summary>
     /// <param name="payload">The payload to send with the event.</param>
     public void HandleUidEvent( byte[] uid ) {
-      byte[] payload = PreferredFormatter.GetPayload( uid, "::UID::" );
+      byte[] payload = PreferredFormatter.GetPayload( uid );
 
       Log.InfoFormat( "Using payload '{0}'.", BitConverter.ToString( payload ).Replace( "-", string.Empty ) );
 

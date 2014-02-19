@@ -98,7 +98,7 @@ namespace OmniUdp {
       if( CommandLineOptions.UseBroadcast ) {
         eventHandlingStrategy = new UdpBroadcastStrategy( CommandLineOptions.NetworkInterface, CommandLineOptions.IPAddress, CommandLineOptions.UseLoopback, new Payload.ByteArrayFormatter( CommandLineOptions.Identifier, CommandLineOptions.Ascii ) );
       } else {
-        eventHandlingStrategy = new RestEndpointStrategy( CommandLineOptions.RestEndpoint, new Payload.StringFormatter( CommandLineOptions.Identifier ) );
+        eventHandlingStrategy = new RestEndpointStrategy( CommandLineOptions.RestEndpoint, new Payload.JsonFormatter( CommandLineOptions.Ascii, CommandLineOptions.Identifier ) );
       }
 
       // Construct the core application and run it in a separate thread.

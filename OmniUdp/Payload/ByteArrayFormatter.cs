@@ -10,7 +10,7 @@ namespace OmniUdp.Payload {
   /// </summary>
   class ByteArrayFormatter {
     /// <summary>
-    ///   The logging <see langword="interface" />
+    ///   The logging interface.
     /// </summary>
     private readonly ILog Log = LogManager.GetLogger( System.Reflection.MethodBase.GetCurrentMethod().DeclaringType );
 
@@ -44,9 +44,19 @@ namespace OmniUdp.Payload {
     /// </summary>
     /// <param name="uid">The UID to put into the payload.</param>
     /// <param name="delimiter">A delimiter to use if additional information is put into the payload.</param>
-    /// <returns></returns>
-    public byte[] GetPayload( byte[] uid, string delimiter = "::::" ) {
-      byte[] payload = GeneratePayload( uid, delimiter );
+    /// <returns>The formatted payload.</returns>
+    public byte[] GetPayload( byte[] uid ) {
+      byte[] payload = GeneratePayload( uid, "::UID::" );
+      return payload;
+    }
+
+    /// <summary>
+    ///   Generate a payload for an error code.
+    /// </summary>
+    /// <param name="error">The error code to put into the payload.</param>
+    /// <returns>The formatted payload.</returns>
+    public byte[] GetPayloadForError( byte[] error ) {
+      byte[] payload = GeneratePayload( error, "::ERROR::" );
       return payload;
     }
 
@@ -55,8 +65,8 @@ namespace OmniUdp.Payload {
     /// </summary>
     /// <param name="data">The data to put into the payload.</param>
     /// <param name="delimiter">An optional delimiter to put between the data and the identfier for this instance.</param>
-    /// <returns></returns>
-    private byte[] GeneratePayload( byte[] data, string delimiter = "::::" ) {
+    /// <returns>The formatted payload.</returns>
+    private byte[] GeneratePayload( byte[] data, string delimiter ) {
       if( Ascii ) {
         // Convert the UID value to a hex string representing the value of the UID.
         string byteString = BitConverter.ToString( data ).Replace( "-", string.Empty );
