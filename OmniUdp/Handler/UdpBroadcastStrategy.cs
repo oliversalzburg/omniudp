@@ -5,6 +5,9 @@ using System.Text;
 using log4net;
 
 namespace OmniUdp.Handler {
+  /// <summary>
+  ///   An event handling strategy that broadcasts events over UDP.
+  /// </summary>
   class UdpBroadcastStrategy : IEventHandlingStrategy {
     /// <summary>
     ///   The default UDP port to use for broadcasts.
@@ -76,6 +79,10 @@ namespace OmniUdp.Handler {
       }
     }
 
+    /// <summary>
+    ///   Handle an event that should be treated as an error.
+    /// </summary>
+    /// <param name="payload">The payload to send with the event.</param>
     public void HandleErrorEvent( byte[] payload ) {
       if( UseLoopback ) {
         UdpBroadcaster.BroadcastLoopback( payload, Port );
@@ -84,6 +91,10 @@ namespace OmniUdp.Handler {
       }
     }
 
+    /// <summary>
+    ///   Handle an event that should be treated as a UID being successfully read.
+    /// </summary>
+    /// <param name="payload">The payload to send with the event.</param>
     public void HandleUidEvent( byte[] payload ) {
       if( UseLoopback ) {
         UdpBroadcaster.BroadcastLoopback( payload, Port );
