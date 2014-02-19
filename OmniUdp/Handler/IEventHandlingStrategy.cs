@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using OmniUdp.Payload;
 
 namespace OmniUdp.Handler {
   /// <summary>
@@ -12,12 +13,12 @@ namespace OmniUdp.Handler {
     ///   Handle an event that should be treated as an error.
     /// </summary>
     /// <param name="payload">The payload to send with the event.</param>
-    void HandleErrorEvent( byte[] payload );
+    void HandleErrorEvent( byte[] error );
 
     /// <summary>
     ///   Handle an event that should be treated as a UID being successfully read.
     /// </summary>
     /// <param name="payload">The payload to send with the event.</param>
-    void HandleUidEvent( byte[] payload );
+    void HandleUidEvent( byte[] uid );
   }
 }

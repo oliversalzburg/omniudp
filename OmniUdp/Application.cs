@@ -31,17 +31,6 @@ namespace OmniUdp {
     public ManualResetEvent ExitApplication;
 
     /// <summary>
-    ///   A (usually unique) identification token for the reader connected to this
-    ///   OmniUDP instance.
-    /// </summary>
-    public byte[] Identifier { get; private set; }
-
-    /// <summary>
-    ///   Encode the UID as an ASCII string before broadcasting.
-    /// </summary>
-    public bool Ascii { get; private set; }
-
-    /// <summary>
     ///   Was the application instance destroyed?
     /// </summary>
     public bool Destroyed { get; set; }
@@ -49,16 +38,12 @@ namespace OmniUdp {
     /// <summary>
     ///   Construct the application.
     /// </summary>
-    /// <param name="identifier">A (usually unique) identification token for the reader connected to this OmniUDP instance.</param>
-    /// <param name="ascii">Should the UID be encoded as ASCII inside the payload?</param>
-    public Application( string identifier, bool ascii, IEventHandlingStrategy eventHandlingStrategy ) {
+    public Application( IEventHandlingStrategy eventHandlingStrategy ) {
       // Event Handling Strategy cannot be null
       if( null == eventHandlingStrategy ) {
         throw new ArgumentNullException( "eventHandlingStrategy" );
       }
 
-      Identifier = ( identifier != null ) ? Encoding.ASCII.GetBytes( identifier ) : null;
-      Ascii = ascii;
       ApplicationEventHandler = eventHandlingStrategy;
 
       Destroyed = false;
@@ -68,10 +53,6 @@ namespace OmniUdp {
     ///   <see cref="Run" /> the application.
     /// </summary>
     public void Run() {
-      if( null != Identifier && Identifier.Length != 0 ) {
-        Log.InfoFormat( "Using identifier '{0}'.", Encoding.ASCII.GetString( Identifier ) );
-      }
-
       ExecuteContext();
     }
 
@@ -167,11 +148,7 @@ namespace OmniUdp {
     /// <param name="uid">The UID that should be broadcast.</param>
     /// <param name="port">The UDP port to use.</param>
     protected void BroadcastUidEvent( byte[] uid ) {
-      byte[] payload = GetPayload( uid, "::UID::" );
-
-      Log.InfoFormat( "Using payload '{0}'.", BitConverter.ToString( payload ).Replace( "-", string.Empty ) );
-
-      ApplicationEventHandler.HandleUidEvent( payload );
+      ApplicationEventHandler.HandleUidEvent( uid );
     }
 
     /// <summary>
@@ -180,34 +157,7 @@ namespace OmniUdp {
     /// <param name="errorCode"></param>
     /// <param name="port"></param>
     protected void BroadcastErrorEvent( byte[] errorCode ) {
-      byte[] payload = GetPayload( errorCode, "::ERROR::" );
-
-      Log.InfoFormat( "Using payload '{0}'.", BitConverter.ToString( payload ).Replace( "-", string.Empty ) );
-
-      ApplicationEventHandler.HandleErrorEvent( payload );
-    }
-
-    /// <summary>
-    ///   Constructs the complete payload.
-    /// </summary>
-    /// <param name="data">The data to put into the payload.</param>
-    /// <param name="delimiter">An optional delimiter to put between the data and the identfier for this instance.</param>
-    /// <returns></returns>
-    private byte[] GetPayload( byte[] data, string delimiter = "::::" ) {
-      if( Ascii ) {
-        // Convert the UID value to a hex string representing the value of the UID.
-        string byteString = BitConverter.ToString( data ).Replace( "-", string.Empty );
-        // Then convert the string back to a byte array.
-        data = Encoding.ASCII.GetBytes( byteString );
-      }
-
-      byte[] payload = data;
-
-      if( null != Identifier ) {
-        byte[] delimiterBytes = Encoding.ASCII.GetBytes( delimiter ?? "::::" );
-        payload = BufferUtils.Combine( Identifier, delimiterBytes, data );
-      }
-      return payload;
+      ApplicationEventHandler.HandleErrorEvent( errorCode );
     }
 
     /// <summary>

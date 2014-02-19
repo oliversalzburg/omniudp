@@ -56,6 +56,8 @@
     <Compile Include="Handler\RestEndpointStrategy.cs" />
     <Compile Include="Handler\UdpBroadcastStrategy.cs" />
     <Compile Include="IpHelper.cs" />
+    <Compile Include="Payload\ByteArrayFormatter.cs" />
+    <Compile Include="Payload\StringFormatter.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="UdpBroadcaster.cs" />

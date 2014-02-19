@@ -17,6 +17,18 @@ namespace OmniUdp {
     ///   Commandline options for this application
     /// </summary>
     private static class CommandLineOptions {
+      #region Modes of Operation
+      /// <summary>
+      ///   Should newly read UIDs be broadcasted through the network?
+      /// </summary>
+      internal static bool UseBroadcast { get; set; }
+
+      /// <summary>
+      ///   The web API endpoint where to send registered events.
+      /// </summary>
+      internal static string RestEndpoint { get; set; }
+      #endregion
+
       /// <summary>
       ///   The network <see langword="interface" /> from which to broadcast.
       /// </summary>
@@ -76,18 +88,23 @@ namespace OmniUdp {
         // Can be thrown by Mono runtime
       }
 
+      IEventHandlingStrategy eventHandlingStrategy = null;
+
       // If no REST API endpoint was configured, use UDP broadcasting.
       if( string.IsNullOrEmpty( CommandLineOptions.RestEndpoint ) ) {
         CommandLineOptions.UseBroadcast = true;
       }
-
       // Construct the appropriate event handling strategy.
-      IEventHandlingStrategy eventHandlingStrategy = new UdpBroadcastStrategy( CommandLineOptions.NetworkInterface, CommandLineOptions.IPAddress, CommandLineOptions.UseLoopback );
+      if( CommandLineOptions.UseBroadcast ) {
+        eventHandlingStrategy = new UdpBroadcastStrategy( CommandLineOptions.NetworkInterface, CommandLineOptions.IPAddress, CommandLineOptions.UseLoopback, new Payload.ByteArrayFormatter( CommandLineOptions.Identifier, CommandLineOptions.Ascii ) );
+      } else {
+        eventHandlingStrategy = new RestEndpointStrategy( CommandLineOptions.RestEndpoint, new Payload.StringFormatter( CommandLineOptions.Identifier ) );
+      }
 
       // Construct the core application and run it in a separate thread.
       Application app = CommandLineOptions.DemoMode
-                          ? new DemoApplication( CommandLineOptions.Identifier, CommandLineOptions.Ascii, eventHandlingStrategy )
-                          : new Application( CommandLineOptions.Identifier, CommandLineOptions.Ascii, eventHandlingStrategy );
+                          ? new DemoApplication( eventHandlingStrategy )
+                          : new Application( eventHandlingStrategy );
 
       Thread applicationThread = new Thread( () => ApplicationHandler( app ) );
       applicationThread.Start();
@@ -145,6 +162,8 @@ namespace OmniUdp {
     /// </returns>
     private static bool ParseCommandLine( IEnumerable<string> args ) {
       OptionSet options = new OptionSet {
+        {"broadcast", "Use UDP broadcasting mode of operation.", v => CommandLineOptions.UseBroadcast = true},
+        {"endpoint=", "Use REST mode of operation with given endpoint.", v => CommandLineOptions.RestEndpoint = v},
         {"interface=", "The network interface from which to broadcast. By default all interfaces are used.", v => CommandLineOptions.NetworkInterface = v},
         {"ip=", "The IP address from which to broadcast. By default all addresses are used.", v => CommandLineOptions.IPAddress = v},
         {"loopback", "Use only the loopback device. Overrides other options.", v => CommandLineOptions.UseLoopback = true},

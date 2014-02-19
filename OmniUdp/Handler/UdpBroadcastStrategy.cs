@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using log4net;
+using OmniUdp.Payload;
 
 namespace OmniUdp.Handler {
   /// <summary>
@@ -18,6 +19,8 @@ namespace OmniUdp.Handler {
     ///   The logging <see langword="interface" />
     /// </summary>
     private readonly ILog Log = LogManager.GetLogger( System.Reflection.MethodBase.GetCurrentMethod().DeclaringType );
+
+    public ByteArrayFormatter PreferredFormatter { get; private set; }
 
     /// <summary>
     ///   The network interface from which to broadcast.
@@ -49,7 +52,11 @@ namespace OmniUdp.Handler {
     /// <param name="useLoopback">
     ///   Use only the loopback device for broadcasting.
     /// </param>
-    public UdpBroadcastStrategy( string networkInterface, string ipAddress, bool useLoopback, int port = DefaultPort ) {
+    /// <param name="formatter">The formatter to use to format the payloads.</param>
+    /// <param name="port">The UDP port to broadcast to.</param>
+    public UdpBroadcastStrategy( string networkInterface, string ipAddress, bool useLoopback, ByteArrayFormatter formatter, int port = DefaultPort ) {
+      PreferredFormatter = formatter;
+
       NetworkInterface = networkInterface;
       IPAddress = ipAddress;
       UseLoopback = useLoopback;
@@ -77,13 +84,19 @@ namespace OmniUdp.Handler {
         Log.InfoFormat( "Sending UIDs only on the loopback device!" );
         IPAddress = "127.0.0.1";
       }
+      Log.InfoFormat( "Using UDP broadcast to port '{0}'.", Port );
     }
 
     /// <summary>
     ///   Handle an event that should be treated as an error.
     /// </summary>
     /// <param name="payload">The payload to send with the event.</param>
-    public void HandleErrorEvent( byte[] payload ) {
+    public void HandleErrorEvent( byte[] error ) {
+      byte[] payload = PreferredFormatter.GetPayload( error, "::ERROR::" );
+
+      Log.InfoFormat( "Using payload '{0}'.", BitConverter.ToString( payload ).Replace( "-", string.Empty ) );
+
+
       if( UseLoopback ) {
         UdpBroadcaster.BroadcastLoopback( payload, Port );
       } else {
@@ -95,7 +108,11 @@ namespace OmniUdp.Handler {
     ///   Handle an event that should be treated as a UID being successfully read.
     /// </summary>
     /// <param name="payload">The payload to send with the event.</param>
-    public void HandleUidEvent( byte[] payload ) {
+    public void HandleUidEvent( byte[] uid ) {
+      byte[] payload = PreferredFormatter.GetPayload( uid, "::UID::" );
+
+      Log.InfoFormat( "Using payload '{0}'.", BitConverter.ToString( payload ).Replace( "-", string.Empty ) );
+
       if( UseLoopback ) {
         UdpBroadcaster.BroadcastLoopback( payload, Port );
       } else {

@@ -14,9 +14,7 @@ namespace OmniUdp {
     /// <summary>
     ///   Construct a new DemoApplication instance.
     /// </summary>
-    /// <param name="identifier">A (usually unique) identification token for the reader connected to this OmniUDP instance.</param>
-    /// <param name="ascii">Should the UID be encoded as ASCII inside the payload?</param>
-    public DemoApplication( string identifier, bool ascii, IEventHandlingStrategy eventHandlingStrategy ) : base( identifier, ascii, eventHandlingStrategy ) { }
+    public DemoApplication( IEventHandlingStrategy eventHandlingStrategy ) : base( eventHandlingStrategy ) { }
 
     /// <summary>
     ///   Create UID reader context and wait for events.

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using log4net;
+using OmniUdp.Payload;
 
 namespace OmniUdp.Handler {
   /// <summary>
@@ -15,6 +16,8 @@ namespace OmniUdp.Handler {
     ///   The logging <see langword="interface" />
     /// </summary>
     private readonly ILog Log = LogManager.GetLogger( System.Reflection.MethodBase.GetCurrentMethod().DeclaringType );
+
+    public StringFormatter PreferredFormatter { get; private set; }
 
     /// <summary>
     ///   The RESTful API endpoint to use.
@@ -29,7 +32,11 @@ namespace OmniUdp.Handler {
     /// <summary>
     ///   Construct a new RestEndpointStrategy instance.
     /// </summary>
-    public RestEndpointStrategy( string endpoint ) {
+    /// <param name="endpoint">The API endpoint to connect to.</param>
+    /// <param name="formatter">The formatter to use to format the payloads.</param>
+    public RestEndpointStrategy( string endpoint, StringFormatter formatter ) {
+      PreferredFormatter = formatter;
+
       Endpoint = endpoint;
       EndpointUri = new Uri( Endpoint );
 
@@ -47,7 +54,11 @@ namespace OmniUdp.Handler {
     ///   Handle an event that should be treated as an error.
     /// </summary>
     /// <param name="payload">The payload to send with the event.</param>
-    public void HandleErrorEvent( byte[] payload ) {
+    public void HandleErrorEvent( byte[] error ) {
+      string payload = PreferredFormatter.GetPayload( error, "::ERROR::" );
+
+      Log.InfoFormat( "Using payload '{0}'.", payload );
+
       throw new NotImplementedException();
     }
 
@@ -55,18 +66,41 @@ namespace OmniUdp.Handler {
     ///   Handle an event that should be treated as a UID being successfully read.
     /// </summary>
     /// <param name="payload">The payload to send with the event.</param>
-    public void HandleUidEvent( byte[] payload ) {
-      WebRequest request = HttpWebRequest.Create( EndpointUri );
-      using( HttpWebResponse response = (HttpWebResponse)request.GetResponse() ) {
-        Log.Info( response.StatusDescription );
-        using( Stream dataStream = response.GetResponseStream() ) {
-          using( StreamReader reader = new StreamReader( dataStream ) ) {
-            // Read the content. 
-            string responseFromServer = reader.ReadToEnd();
-            // Display the content.
-            Log.Info( responseFromServer );
+    public void HandleUidEvent( byte[] uid ) {
+
+      string payload = PreferredFormatter.GetPayload( uid, "::UID::" );
+
+      string JsonData = String.Format(
+        "{{ \"data\": \"{0}\" }}",
+         payload
+        );
+      
+      HttpWebRequest request = (HttpWebRequest)( HttpWebRequest.Create( EndpointUri ) );
+      request.Method = "POST";
+      request.ContentType = "application/json";
+      request.ContentLength = JsonData.Length;
+      try {
+
+        using( Stream requestStream = request.GetRequestStream() ) {
+          using( StreamWriter writer = new StreamWriter( requestStream ) ) {
+            Log.InfoFormat( "Using JSON Payload: '{0}'", JsonData );
+            writer.Write( JsonData );
           }
         }
+
+        using( HttpWebResponse response = (HttpWebResponse)request.GetResponse() ) {
+          //Log.Info( response.StatusDescription );
+          using( Stream dataStream = response.GetResponseStream() ) {
+            using( StreamReader reader = new StreamReader( dataStream ) ) {
+              // Read the content. 
+              string responseFromServer = reader.ReadToEnd();
+              // Display the content.
+              Log.Info( responseFromServer );
+            }
+          }
+        }
+      } catch( WebException ex ) {
+        Log.ErrorFormat( "Problem communication with RESTful endpoint: {0}", ex.Message );
       }
     }
   }
