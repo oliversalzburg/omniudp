@@ -32,11 +32,7 @@ namespace OmniUdp.Payload {
     /// <param name="ascii">Should the UID be encoded as ASCII inside the payload?</param>
     public ByteArrayFormatter( string identifier, bool ascii ) {
       Identifier = ( identifier != null ) ? Encoding.ASCII.GetBytes( identifier ) : null;
-      Ascii = ascii;
-
-      if( null != Identifier && Identifier.Length != 0 ) {
-        Log.InfoFormat( "Using identifier '{0}'.", Encoding.ASCII.GetString( Identifier ) );
-      }
+      Ascii = ascii;  
     }
 
     /// <summary>

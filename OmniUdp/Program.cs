@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Text;
 using System.Threading;
 using NDesk.Options;
 using PCSC;
@@ -88,7 +89,11 @@ namespace OmniUdp {
         // Can be thrown by Mono runtime
       }
 
-      IEventHandlingStrategy eventHandlingStrategy = null;
+      if( !String.IsNullOrEmpty( CommandLineOptions.Identifier ) ) {
+        Log.InfoFormat( "Using identifier '{0}'.", CommandLineOptions.Identifier );
+      }
+
+      ConsecutiveStrategiesStrategy eventHandlingStrategy = new ConsecutiveStrategiesStrategy();
 
       // If no REST API endpoint was configured, use UDP broadcasting.
       if( string.IsNullOrEmpty( CommandLineOptions.RestEndpoint ) ) {
@@ -96,9 +101,22 @@ namespace OmniUdp {
       }
       // Construct the appropriate event handling strategy.
       if( CommandLineOptions.UseBroadcast ) {
-        eventHandlingStrategy = new UdpBroadcastStrategy( CommandLineOptions.NetworkInterface, CommandLineOptions.IPAddress, CommandLineOptions.UseLoopback, new Payload.ByteArrayFormatter( CommandLineOptions.Identifier, CommandLineOptions.Ascii ) );
-      } else {
-        eventHandlingStrategy = new RestEndpointStrategy( CommandLineOptions.RestEndpoint, new Payload.JsonFormatter( CommandLineOptions.Ascii, CommandLineOptions.Identifier ) );
+        eventHandlingStrategy.Strategies.Add( 
+          new UdpBroadcastStrategy( 
+            CommandLineOptions.NetworkInterface, 
+            CommandLineOptions.IPAddress, 
+            CommandLineOptions.UseLoopback, 
+            new Payload.ByteArrayFormatter( 
+              CommandLineOptions.Identifier, 
+              CommandLineOptions.Ascii ) ) );
+      } 
+      if( !String.IsNullOrEmpty( CommandLineOptions.RestEndpoint ) ) {
+        eventHandlingStrategy.Strategies.Add( 
+          new RestEndpointStrategy( 
+            CommandLineOptions.RestEndpoint, 
+            new Payload.JsonFormatter( 
+              CommandLineOptions.Ascii, 
+              CommandLineOptions.Identifier ) ) );
       }
 
       // Construct the core application and run it in a separate thread.

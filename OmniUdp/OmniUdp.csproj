@@ -52,6 +52,7 @@
     <Compile Include="Application.cs" />
     <Compile Include="BufferUtils.cs" />
     <Compile Include="DemoApplication.cs" />
+    <Compile Include="Handler\ConsecutiveStrategiesStrategy.cs" />
     <Compile Include="Handler\IEventHandlingStrategy.cs" />
     <Compile Include="Handler\RestEndpointStrategy.cs" />
     <Compile Include="Handler\UdpBroadcastStrategy.cs" />

@@ -12,7 +12,7 @@ namespace OmniUdp.Payload {
     ///   Construct a new JsonFormatter instance.
     /// </summary>
     /// <param name="ascii">Should the UID be converted to an ASCII string instead of a number?</param>
-    /// <param name="identifier"></param>
+    /// <param name="identifier">A (usually unique) identification token for the reader connected to this OmniUDP instance.</param>
     public JsonFormatter( bool ascii, string identifier ) : base( ascii, identifier ) { }
 
     /// <summary>

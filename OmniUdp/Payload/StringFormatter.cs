@@ -33,10 +33,6 @@ namespace OmniUdp.Payload {
     public StringFormatter( bool ascii, string identifier ) {
       Ascii = ascii;
       Identifier = identifier;
-      
-      if( null != Identifier && Identifier.Length != 0 ) {
-        Log.InfoFormat( "Using identifier '{0}'.", Identifier );
-      }
     }
 
     /// <summary>
