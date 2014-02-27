@@ -157,6 +157,8 @@ namespace OmniUdp {
     /// <param name="errorCode"></param>
     /// <param name="port"></param>
     protected void BroadcastErrorEvent( byte[] errorCode ) {
+      /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+      Thread.Sleep(60000);
       ApplicationEventHandler.HandleErrorEvent( errorCode );
     }
 
@@ -167,6 +169,9 @@ namespace OmniUdp {
     /// <param name="args"></param>
     protected void CardInserted( object sender, CardStatusEventArgs args ) {
       Log.Info( "Card detected." );
+      Thread thread = new Thread(new ParameterizedThreadStart(CardInsertedThreadMethod));
+      thread.Start(args);
+      /*
       try {
         byte[] uid = UidFromConnectedCard( args.ReaderName );
 
@@ -174,6 +179,28 @@ namespace OmniUdp {
         byte[] shortUid = new byte[4];
         Array.Copy( uid, shortUid, 4 );
 
+        string uidString = BitConverter.ToString( shortUid ).Replace( "-", string.Empty );
+        Log.InfoFormat( "Read UID '{0}' from '{1}'.", uidString, args.ReaderName );
+        BroadcastUidEvent( shortUid );
+      } catch( Exception ex ) {
+        Log.Error( ex.Message );
+        BroadcastErrorEvent( new byte[] {0} );
+      }
+      */
+    }
+
+    /// <summary>
+    /// Every time a card is detected, this method is called in a new Thread.
+    /// </summary>
+    /// <param name="argsObject"></param>
+    private void CardInsertedThreadMethod( object argsObject ) {
+      CardStatusEventArgs args = (CardStatusEventArgs) argsObject;
+      try {
+        byte[] uid = UidFromConnectedCard( args.ReaderName );
+
+        // We only care about the first 4 bytes
+        byte[] shortUid = new byte[4];
+        Array.Copy( uid, shortUid, 4 );
         string uidString = BitConverter.ToString( shortUid ).Replace( "-", string.Empty );
         Log.InfoFormat( "Read UID '{0}' from '{1}'.", uidString, args.ReaderName );
         BroadcastUidEvent( shortUid );
