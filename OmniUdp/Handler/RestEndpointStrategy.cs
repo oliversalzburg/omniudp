@@ -43,7 +43,7 @@ namespace OmniUdp.Handler {
     /// <summary>
     ///   The path of the authentication file.
     /// </summary>
-    private string authFilePath;
+    private string[] authInf;
 
     /// <summary>
     ///   PriorityQueue for storing payload.
@@ -65,14 +65,18 @@ namespace OmniUdp.Handler {
     public RestEndpointStrategy( string endpoint, bool noCertificate, string authFile, JsonFormatter formatter ) {
       PreferredFormatter = formatter;
       noCertificateNeeded = noCertificate;
-      
-      authFilePath = authFile;
+
+      try {
+        authInf = readFromAuthFile(authFile);
+      } catch( Exception ex ) {
+        Log.ErrorFormat("Problem with authentication file: {0}", ex.Message);
+      }
 
       recievedDevices = new ConcurrentQueue<string>();
 
       retryTimer = new System.Timers.Timer();
       retryTimer.Elapsed += new ElapsedEventHandler(OnTimedEvent);
-      retryTimer.Interval = 15000;
+      retryTimer.Interval = 10000;
 
       Endpoint = endpoint;
       EndpointUri = new Uri( Endpoint );
@@ -128,17 +132,14 @@ namespace OmniUdp.Handler {
     private void sendRequest() {
       string payload = "";
 
-      // Peeking, so the element wont get lost if an error occurs.
-      recievedDevices.TryPeek(out payload);
-
       if( !recievedDevices.IsEmpty ) {
+      recievedDevices.TryDequeue(out payload);
         HttpWebRequest request = (HttpWebRequest)( HttpWebRequest.Create( EndpointUri ) );
         request.Method = "POST";
         request.ContentType = "application/json";
 
         // Trying to get the authentication information. If an error occured, nothing will be sent.
         try {
-          string[] authInf = readFromAuthFile(authFilePath);
           request.Headers.Add( "FM-Auth-Id", authInf[0] );
           request.Headers.Add( "FM-Auth-Code", authInf[1] );
         } catch( Exception ) {
@@ -167,12 +168,11 @@ namespace OmniUdp.Handler {
               }
             }
           }
-
-          // Clear element and stop retry timer if sending was successful.
-          recievedDevices.TryDequeue( out payload );
+          // stop retry timer if sending was successful.
           retryTimer.Stop();
         } catch( WebException ex ) {
           Log.ErrorFormat( "Problem communication with RESTful endpoint: {0}", ex.Message );
+          recievedDevices.Enqueue( payload );
           retryTimer.Start();
         }
       }
@@ -195,15 +195,8 @@ namespace OmniUdp.Handler {
         if( authInformation.Length != 2 ) {
           throw new Exception("File wrong formatted.");
         }
-      } catch( FileNotFoundException ex ) {
-        Log.ErrorFormat("Could not find the file: {0}", ex.Message);
-        throw;
-      } catch( ArgumentException ex ) {
-        Log.ErrorFormat("The given path was null: ", ex.Message);
-        throw;
       } catch ( Exception ex) {
-        Log.ErrorFormat("Problem occured while reading from file: ", ex.Message);
-        throw;
+        throw ex;
       }
       // File was correct formated.
       return authInformation;
@@ -215,7 +208,8 @@ namespace OmniUdp.Handler {
     /// <param name="source"></param>
     /// <param name="e"></param>
     private void OnTimedEvent(object source, ElapsedEventArgs e) {
-      sendRequest();
+        Thread t = new Thread(new ThreadStart(sendRequest));
+        t.Start();
     }
   }
 }
