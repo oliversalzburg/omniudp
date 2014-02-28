@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Threading;
 using log4net;
 using OmniUdp.Payload;
 
@@ -43,6 +45,11 @@ namespace OmniUdp.Handler {
     private string authFilePath;
 
     /// <summary>
+    /// PriorityQueue for storing payload.
+    /// </summary>
+    private static ConcurrentQueue<string> recievedDevices;
+    
+    /// <summary>
     ///   Construct a new RestEndpointStrategy instance.
     /// </summary>
     /// <param name="endpoint">The API endpoint to connect to.</param>
@@ -54,6 +61,8 @@ namespace OmniUdp.Handler {
       noCertificateNeeded = noCertificate;
       
       authFilePath = authFile;
+
+      recievedDevices = new ConcurrentQueue<string>();
 
       Endpoint = endpoint;
       EndpointUri = new Uri( Endpoint );
@@ -94,6 +103,12 @@ namespace OmniUdp.Handler {
       if( noCertificateNeeded ) {
         ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
       }
+
+      recievedDevices.Enqueue( payload );
+
+      Thread t = new Thread(new ThreadStart(sendRequest));
+      t.Start();
+      /*
       HttpWebRequest request = (HttpWebRequest)( HttpWebRequest.Create( EndpointUri ) );
       request.Method = "POST";
       request.ContentType = "application/json";
@@ -103,11 +118,12 @@ namespace OmniUdp.Handler {
         string[] authInf = readFromAuthFile(authFilePath);
         request.Headers.Add( "FM-Auth-Id", authInf[0] );
         request.Headers.Add( "FM-Auth-Code", authInf[1] );
-      } catch( Exception ex ) {
+      } catch( Exception ) {
         return;
       }
 
       request.ContentLength = payload.Length;
+
       try {
 
         using( Stream requestStream = request.GetRequestStream() ) {
@@ -130,6 +146,58 @@ namespace OmniUdp.Handler {
         }
       } catch( WebException ex ) {
         Log.ErrorFormat( "Problem communication with RESTful endpoint: {0}", ex.Message );
+      }
+      */
+    }
+
+    private void sendRequest() {
+      string payload = "";
+
+      // Peeking, so the element wont get lost if an error occurs.
+      recievedDevices.TryPeek(out payload);
+
+      if( !recievedDevices.IsEmpty ) {
+        HttpWebRequest request = (HttpWebRequest)( HttpWebRequest.Create( EndpointUri ) );
+        request.Method = "POST";
+        request.ContentType = "application/json";
+
+        // Trying to get the authentication information. If an error occured, nothing will be sent.
+        try {
+          string[] authInf = readFromAuthFile(authFilePath);
+          request.Headers.Add( "FM-Auth-Id", authInf[0] );
+          request.Headers.Add( "FM-Auth-Code", authInf[1] );
+        } catch( Exception ) {
+          return;
+        }
+
+        request.ContentLength = payload.Length;
+
+        try {
+
+          using( Stream requestStream = request.GetRequestStream() ) {
+            using( StreamWriter writer = new StreamWriter( requestStream ) ) {
+              Log.InfoFormat( "Using JSON Payload: '{0}'", payload );
+              writer.Write( payload );
+            }
+          }
+
+          using( HttpWebResponse response = (HttpWebResponse)request.GetResponse() ) {
+            //Log.Info( response.StatusDescription );
+            using( Stream dataStream = response.GetResponseStream() ) {
+              using( StreamReader reader = new StreamReader( dataStream ) ) {
+                // Read the content. 
+                string responseFromServer = reader.ReadToEnd();
+                // Display the content.
+                Log.Info( responseFromServer );
+              }
+            }
+          }
+
+          // Clear element if sending was successful.
+          recievedDevices.TryDequeue( out payload );
+        } catch( WebException ex ) {
+          Log.ErrorFormat( "Problem communication with RESTful endpoint: {0}", ex.Message );
+        }
       }
     }
 
