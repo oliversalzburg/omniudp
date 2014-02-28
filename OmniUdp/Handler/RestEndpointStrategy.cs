@@ -33,18 +33,19 @@ namespace OmniUdp.Handler {
     private Uri EndpointUri { get; set; }
 
     /// <summary>
-    ///   Allows using https without certificate if true.
+    ///   Ignore SSL certificate errors.
     /// </summary>
-    private bool noCertificateNeeded;
+    private bool InsecureSSL;
 
     /// <summary>
     ///   Construct a new RestEndpointStrategy instance.
     /// </summary>
     /// <param name="endpoint">The API endpoint to connect to.</param>
+    /// <param name="insecureSSL">Ignore SSL certificate errors.</param>
     /// <param name="formatter">The formatter to use to format the payloads.</param>
-    public RestEndpointStrategy( string endpoint, bool noCertificate, JsonFormatter formatter ) {
+    public RestEndpointStrategy( string endpoint, bool insecureSSL, JsonFormatter formatter ) {
       PreferredFormatter = formatter;
-      noCertificateNeeded = noCertificate;
+      InsecureSSL = insecureSSL;
 
       Endpoint = endpoint;
       EndpointUri = new Uri( Endpoint );
@@ -82,7 +83,7 @@ namespace OmniUdp.Handler {
     /// </summary>
     /// <param name="payload">The payload to send.</param>
     private void SendPayload( string payload ) {
-      if( noCertificateNeeded ) {
+      if( InsecureSSL ) {
         ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
       }
       HttpWebRequest request = (HttpWebRequest)( HttpWebRequest.Create( EndpointUri ) );
