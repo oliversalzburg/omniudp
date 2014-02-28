@@ -38,13 +38,22 @@ namespace OmniUdp.Handler {
     private bool noCertificateNeeded;
 
     /// <summary>
+    ///   The path of the authentication file.
+    /// </summary>
+    private string authFilePath;
+
+    /// <summary>
     ///   Construct a new RestEndpointStrategy instance.
     /// </summary>
     /// <param name="endpoint">The API endpoint to connect to.</param>
+    /// <param name="noCertificate">When true, allows to use https without certificate.</param>
+    /// <param name="authFile">The location of the authentication file. Default: working directory.</param>
     /// <param name="formatter">The formatter to use to format the payloads.</param>
-    public RestEndpointStrategy( string endpoint, bool noCertificate, JsonFormatter formatter ) {
+    public RestEndpointStrategy( string endpoint, bool noCertificate, string authFile, JsonFormatter formatter ) {
       PreferredFormatter = formatter;
       noCertificateNeeded = noCertificate;
+      
+      authFilePath = authFile;
 
       Endpoint = endpoint;
       EndpointUri = new Uri( Endpoint );
@@ -88,6 +97,16 @@ namespace OmniUdp.Handler {
       HttpWebRequest request = (HttpWebRequest)( HttpWebRequest.Create( EndpointUri ) );
       request.Method = "POST";
       request.ContentType = "application/json";
+
+      // Trying to get the authentication information. If an error occured, nothing will be sent.
+      try {
+        string[] authInf = readFromAuthFile(authFilePath);
+        request.Headers.Add( "FM-Auth-Id", authInf[0] );
+        request.Headers.Add( "FM-Auth-Code", authInf[1] );
+      } catch( Exception ex ) {
+        return;
+      }
+
       request.ContentLength = payload.Length;
       try {
 
@@ -112,6 +131,37 @@ namespace OmniUdp.Handler {
       } catch( WebException ex ) {
         Log.ErrorFormat( "Problem communication with RESTful endpoint: {0}", ex.Message );
       }
+    }
+
+    /// <summary>
+    /// Reads text from the authentication file.
+    /// </summary>
+    /// <param name="path">The path of the authentication file.</param>
+    /// <returns>String-Array with the Auth-ID (first) and the Auth-Code (second).</returns>
+    private string[] readFromAuthFile(string path = "auth.txt") {
+      string data = "";
+      string[] authInformation = new string[2];
+
+      // Read data from file.
+      try {
+        data = System.IO.File.ReadAllText(path);
+        // Checking read data.
+        authInformation = data.Split(';');
+        if( authInformation.Length != 2 ) {
+          throw new Exception("File wrong formatted.");
+        }
+      } catch( FileNotFoundException ex ) {
+        Log.ErrorFormat("Could not find the file: {0}", ex.Message);
+        throw;
+      } catch( ArgumentException ex ) {
+        Log.ErrorFormat("The given path was null: ", ex.Message);
+        throw;
+      } catch ( Exception ex) {
+        Log.ErrorFormat("Problem occured while reading from file: ", ex.Message);
+        throw;
+      }
+      // File was correct formated.
+      return authInformation;
     }
   }
 }

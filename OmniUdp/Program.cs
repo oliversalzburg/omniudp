@@ -67,9 +67,14 @@ namespace OmniUdp {
       internal static bool ShowHelp { get; set; }
 
       /// <summary>
-      ///   Allowed https without certificate.
+      ///   Allows https without certificate.
       /// </summary>
       internal static bool NoCertificate { get; set; }
+      
+      /// <summary>
+      /// Path for authentication file
+      /// </summary>
+      internal static string AuthFilePath { get; set; }
     }
 
     /// <summary>
@@ -120,6 +125,7 @@ namespace OmniUdp {
           new RestEndpointStrategy( 
             CommandLineOptions.RestEndpoint, 
             CommandLineOptions.NoCertificate,
+            CommandLineOptions.AuthFilePath,
             new Payload.JsonFormatter( 
               CommandLineOptions.Ascii, 
               CommandLineOptions.Identifier ) ) );
@@ -195,6 +201,7 @@ namespace OmniUdp {
         {"ascii", "Encode the UID as an ASCII string before broadcasting.", v => CommandLineOptions.Ascii = true},
         {"demo", "Enable demo mode.", v => CommandLineOptions.DemoMode = true},
         {"nocertificate", "Allows to use https without certificate.", v => CommandLineOptions.NoCertificate = true},
+        {"authfile=", "The path of the authentication file", v => CommandLineOptions.AuthFilePath = v},
         {"h|?|help", "Shows this help message", v => CommandLineOptions.ShowHelp = v != null}
       };
 
