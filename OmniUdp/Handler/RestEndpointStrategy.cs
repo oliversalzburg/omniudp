@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading;
+using System.Timers;
 using log4net;
 using OmniUdp.Payload;
 
@@ -45,10 +46,15 @@ namespace OmniUdp.Handler {
     private string authFilePath;
 
     /// <summary>
-    /// PriorityQueue for storing payload.
+    ///   PriorityQueue for storing payload.
     /// </summary>
     private static ConcurrentQueue<string> recievedDevices;
     
+    /// <summary>
+    ///   Timer for retrying to send the payloads
+    /// </summary>
+    private static System.Timers.Timer retryTimer;
+
     /// <summary>
     ///   Construct a new RestEndpointStrategy instance.
     /// </summary>
@@ -63,6 +69,10 @@ namespace OmniUdp.Handler {
       authFilePath = authFile;
 
       recievedDevices = new ConcurrentQueue<string>();
+
+      retryTimer = new System.Timers.Timer();
+      retryTimer.Elapsed += new ElapsedEventHandler(OnTimedEvent);
+      retryTimer.Interval = 15000;
 
       Endpoint = endpoint;
       EndpointUri = new Uri( Endpoint );
@@ -96,7 +106,7 @@ namespace OmniUdp.Handler {
     }
 
     /// <summary>
-    ///   Sends a payload to the API endpoint.
+    ///   Starts a Thread for sending a payload to the API endpoint.
     /// </summary>
     /// <param name="payload">The payload to send.</param>
     private void SendPayload( string payload ) {
@@ -106,50 +116,15 @@ namespace OmniUdp.Handler {
 
       recievedDevices.Enqueue( payload );
 
-      Thread t = new Thread(new ThreadStart(sendRequest));
-      t.Start();
-      /*
-      HttpWebRequest request = (HttpWebRequest)( HttpWebRequest.Create( EndpointUri ) );
-      request.Method = "POST";
-      request.ContentType = "application/json";
-
-      // Trying to get the authentication information. If an error occured, nothing will be sent.
-      try {
-        string[] authInf = readFromAuthFile(authFilePath);
-        request.Headers.Add( "FM-Auth-Id", authInf[0] );
-        request.Headers.Add( "FM-Auth-Code", authInf[1] );
-      } catch( Exception ) {
-        return;
+       if( retryTimer.Enabled == false ) {
+        Thread t = new Thread(new ThreadStart(sendRequest));
+        t.Start();
       }
-
-      request.ContentLength = payload.Length;
-
-      try {
-
-        using( Stream requestStream = request.GetRequestStream() ) {
-          using( StreamWriter writer = new StreamWriter( requestStream ) ) {
-            Log.InfoFormat( "Using JSON Payload: '{0}'", payload );
-            writer.Write( payload );
-          }
-        }
-
-        using( HttpWebResponse response = (HttpWebResponse)request.GetResponse() ) {
-          //Log.Info( response.StatusDescription );
-          using( Stream dataStream = response.GetResponseStream() ) {
-            using( StreamReader reader = new StreamReader( dataStream ) ) {
-              // Read the content. 
-              string responseFromServer = reader.ReadToEnd();
-              // Display the content.
-              Log.Info( responseFromServer );
-            }
-          }
-        }
-      } catch( WebException ex ) {
-        Log.ErrorFormat( "Problem communication with RESTful endpoint: {0}", ex.Message );
-      }
-      */
     }
 
+    /// <summary>
+    ///   Sends payloads from the ConcurrentQueue.
+    /// </summary>
     private void sendRequest() {
       string payload = "";
 
@@ -193,10 +168,12 @@ namespace OmniUdp.Handler {
             }
           }
 
-          // Clear element if sending was successful.
+          // Clear element and stop retry timer if sending was successful.
           recievedDevices.TryDequeue( out payload );
+          retryTimer.Stop();
         } catch( WebException ex ) {
           Log.ErrorFormat( "Problem communication with RESTful endpoint: {0}", ex.Message );
+          retryTimer.Start();
         }
       }
     }
@@ -230,6 +207,15 @@ namespace OmniUdp.Handler {
       }
       // File was correct formated.
       return authInformation;
+    }
+
+    /// <summary>
+    /// When Timer elapses, retry sending the recieved Devices.
+    /// </summary>
+    /// <param name="source"></param>
+    /// <param name="e"></param>
+    private void OnTimedEvent(object source, ElapsedEventArgs e) {
+      sendRequest();
     }
   }
 }
