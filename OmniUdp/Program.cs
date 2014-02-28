@@ -65,6 +65,11 @@ namespace OmniUdp {
       ///   Should the command line help be displayed?
       /// </summary>
       internal static bool ShowHelp { get; set; }
+
+      /// <summary>
+      ///   Allowed https without certificate.
+      /// </summary>
+      internal static bool NoCertificate { get; set; }
     }
 
     /// <summary>
@@ -114,6 +119,7 @@ namespace OmniUdp {
         eventHandlingStrategy.Strategies.Add( 
           new RestEndpointStrategy( 
             CommandLineOptions.RestEndpoint, 
+            CommandLineOptions.NoCertificate,
             new Payload.JsonFormatter( 
               CommandLineOptions.Ascii, 
               CommandLineOptions.Identifier ) ) );
@@ -188,6 +194,7 @@ namespace OmniUdp {
         {"identifier=", "The identifier to broadcast with every UID.", v => CommandLineOptions.Identifier = v},
         {"ascii", "Encode the UID as an ASCII string before broadcasting.", v => CommandLineOptions.Ascii = true},
         {"demo", "Enable demo mode.", v => CommandLineOptions.DemoMode = true},
+        {"nocertificate", "Allows to use https without certificate.", v => CommandLineOptions.NoCertificate = true},
         {"h|?|help", "Shows this help message", v => CommandLineOptions.ShowHelp = v != null}
       };
 
