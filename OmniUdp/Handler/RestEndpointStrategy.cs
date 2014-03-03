@@ -73,12 +73,12 @@ namespace OmniUdp.Handler {
     /// <summary>
     ///   PriorityQueue for storing payload.
     /// </summary>
-    private static ConcurrentQueue<string> RecievedDevices;
+    private static ConcurrentQueue<string> RecievedPayloads;
     
     /// <summary>
     ///   Timer for retrying to send the payloads
     /// </summary>
-    private static System.Timers.Timer retryTimer;
+    private static System.Timers.Timer RetryTimer;
 
     /// <summary>
     ///   Construct a new RestEndpointStrategy instance.
@@ -98,11 +98,11 @@ namespace OmniUdp.Handler {
         throw;
       }
 
-      RecievedDevices = new ConcurrentQueue<string>();
+      RecievedPayloads = new ConcurrentQueue<string>();
 
-      retryTimer = new System.Timers.Timer();
-      retryTimer.Elapsed += new ElapsedEventHandler(OnTimedEvent);
-      retryTimer.Interval = 10000;
+      RetryTimer = new System.Timers.Timer();
+      RetryTimer.Elapsed += new ElapsedEventHandler(OnTimedEvent);
+      RetryTimer.Interval = TimeSpan.FromSeconds( 10.0 ).TotalMilliseconds;
 
       Endpoint = endpoint;
       EndpointUri = new Uri( Endpoint );
@@ -144,10 +144,10 @@ namespace OmniUdp.Handler {
         ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
       }
 
-      RecievedDevices.Enqueue( payload );
+      RecievedPayloads.Enqueue( payload );
 
-       if( retryTimer.Enabled == false ) {
-        Thread t = new Thread(new ThreadStart(sendRequest));
+      if( RetryTimer.Enabled == false ) {
+        Thread t = new Thread( SendRequest );
         t.Start();
       }
     }
@@ -155,11 +155,9 @@ namespace OmniUdp.Handler {
     /// <summary>
     ///   Sends payloads from the ConcurrentQueue.
     /// </summary>
-    private void sendRequest() {
+    private void SendRequest() {
       string payload = "";
-
-      if( !RecievedDevices.IsEmpty ) {
-      RecievedDevices.TryDequeue(out payload);
+      if( !RecievedPayloads.IsEmpty && RecievedPayloads.TryDequeue( out payload ) ) {
         HttpWebRequest request = (HttpWebRequest)( HttpWebRequest.Create( EndpointUri ) );
         request.Method = "POST";
         request.ContentType = "application/json";
@@ -173,7 +171,6 @@ namespace OmniUdp.Handler {
         request.ContentLength = payload.Length;
 
         try {
-          Thread.Sleep( TimeSpan.FromSeconds( 5 ) );
           using( Stream requestStream = request.GetRequestStream() ) {
             using( StreamWriter writer = new StreamWriter( requestStream ) ) {
               Log.InfoFormat( "Using JSON Payload: '{0}'", payload );
@@ -193,13 +190,14 @@ namespace OmniUdp.Handler {
             }
           }
           // stop retry timer if sending was successful.
-          retryTimer.Stop();
+          RetryTimer.Stop();
+
         } catch( WebException ex ) {
           Log.ErrorFormat( "Problem communication with RESTful endpoint: {0}", ex.Message );
           
           if( ex.Status != WebExceptionStatus.ProtocolError ) {
-            RecievedDevices.Enqueue( payload );
-            retryTimer.Start();
+            RecievedPayloads.Enqueue( payload );
+            RetryTimer.Start();
           }
         }
       }
@@ -239,7 +237,7 @@ namespace OmniUdp.Handler {
     /// <param name="source"></param>
     /// <param name="e"></param>
     private void OnTimedEvent(object source, ElapsedEventArgs e) {
-        Thread t = new Thread(new ThreadStart(sendRequest));
+        Thread t = new Thread(new ThreadStart(SendRequest));
         t.Start();
     }
   }
