@@ -195,10 +195,8 @@ namespace OmniUdp.Handler {
         } catch( WebException ex ) {
           Log.ErrorFormat( "Problem communication with RESTful endpoint: {0}", ex.Message );
           
-          if( ex.Status != WebExceptionStatus.ProtocolError ) {
-            RecievedPayloads.Enqueue( payload );
-            RetryTimer.Start();
-          }
+          RecievedPayloads.Enqueue( payload );
+          RetryTimer.Start();
         }
       }
     }
