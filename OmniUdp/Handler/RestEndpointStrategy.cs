@@ -36,9 +36,9 @@ namespace OmniUdp.Handler {
     private Uri EndpointUri { get; set; }
 
     /// <summary>
-    ///   Allows using https without certificate if true.
+    ///   Ignore SSL certificate errors.
     /// </summary>
-    private bool noCertificateNeeded;
+    private bool InsecureSSL;
 
     /// <summary>
     ///   The path of the authentication file.
@@ -59,12 +59,12 @@ namespace OmniUdp.Handler {
     ///   Construct a new RestEndpointStrategy instance.
     /// </summary>
     /// <param name="endpoint">The API endpoint to connect to.</param>
-    /// <param name="noCertificate">When true, allows to use https without certificate.</param>
+    /// <param name="insecureSSL">Ignore SSL certificate errors.</param>
     /// <param name="authFile">The location of the authentication file. Default: working directory.</param>
     /// <param name="formatter">The formatter to use to format the payloads.</param>
-    public RestEndpointStrategy( string endpoint, bool noCertificate, string authFile, JsonFormatter formatter ) {
+    public RestEndpointStrategy( string endpoint, bool insecureSSL, string authFile, JsonFormatter formatter ) {
       PreferredFormatter = formatter;
-      noCertificateNeeded = noCertificate;
+      InsecureSSL = insecureSSL;
 
       try {
         authInf = readFromAuthFile(authFile);
@@ -114,7 +114,7 @@ namespace OmniUdp.Handler {
     /// </summary>
     /// <param name="payload">The payload to send.</param>
     private void SendPayload( string payload ) {
-      if( noCertificateNeeded ) {
+      if( InsecureSSL ) {
         ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
       }
 

@@ -67,12 +67,12 @@ namespace OmniUdp {
       internal static bool ShowHelp { get; set; }
 
       /// <summary>
-      ///   Allows https without certificate.
+      ///   Ignore SSL certificate errors.
       /// </summary>
-      internal static bool NoCertificate { get; set; }
+      internal static bool InsecureSSL { get; set; }
       
       /// <summary>
-      /// Path for authentication file
+      ///   Path for authentication file.
       /// </summary>
       internal static string AuthFilePath { get; set; }
     }
@@ -122,9 +122,9 @@ namespace OmniUdp {
       } 
       if( !String.IsNullOrEmpty( CommandLineOptions.RestEndpoint ) ) {
         eventHandlingStrategy.Strategies.Add( 
-          new RestEndpointStrategy( 
-            CommandLineOptions.RestEndpoint, 
-            CommandLineOptions.NoCertificate,
+          new RestEndpointStrategy(
+            CommandLineOptions.RestEndpoint,
+            CommandLineOptions.InsecureSSL,
             CommandLineOptions.AuthFilePath,
             new Payload.JsonFormatter( 
               CommandLineOptions.Ascii, 
@@ -200,7 +200,7 @@ namespace OmniUdp {
         {"identifier=", "The identifier to broadcast with every UID.", v => CommandLineOptions.Identifier = v},
         {"ascii", "Encode the UID as an ASCII string before broadcasting.", v => CommandLineOptions.Ascii = true},
         {"demo", "Enable demo mode.", v => CommandLineOptions.DemoMode = true},
-        {"nocertificate", "Allows to use https without certificate.", v => CommandLineOptions.NoCertificate = true},
+        {"insecure", "Ignore SSL certificate validation errors.", v => CommandLineOptions.InsecureSSL = true},
         {"authfile=", "The path of the authentication file", v => CommandLineOptions.AuthFilePath = v},
         {"h|?|help", "Shows this help message", v => CommandLineOptions.ShowHelp = v != null}
       };
