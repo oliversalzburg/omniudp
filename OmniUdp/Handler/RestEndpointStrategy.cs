@@ -67,9 +67,10 @@ namespace OmniUdp.Handler {
       InsecureSSL = insecureSSL;
 
       try {
-        authInf = readFromAuthFile(authFile);
+        authInf = ReadFromAuthFile( authFile );
       } catch( Exception ex ) {
-        Log.ErrorFormat("Problem with authentication file: {0}", ex.Message);
+        Log.ErrorFormat( "Problem with authentication file: {0}", ex.Message );
+        throw;
       }
 
       recievedDevices = new ConcurrentQueue<string>();
@@ -183,21 +184,25 @@ namespace OmniUdp.Handler {
     /// </summary>
     /// <param name="path">The path of the authentication file.</param>
     /// <returns>String-Array with the Auth-ID (first) and the Auth-Code (second).</returns>
-    private string[] readFromAuthFile(string path = "auth.txt") {
+    private string[] ReadFromAuthFile( string path = "auth.txt" ) {
       string data = "";
       string[] authInformation = new string[2];
 
-      // Read data from file.
-      try {
-        data = System.IO.File.ReadAllText(path);
-        // Checking read data.
-        authInformation = data.Split(';');
-        if( authInformation.Length != 2 ) {
-          throw new Exception("File wrong formatted.");
-        }
-      } catch ( Exception ex) {
-        throw ex;
+      if( string.IsNullOrEmpty( path ) ) {
+        throw new ArgumentNullException( "path" );
       }
+      if( !File.Exists( path ) ) {
+        throw new InvalidOperationException( String.Format( "Auth file {0} does not exist.", path ) );
+      }
+
+      // Read data from file.
+      data = System.IO.File.ReadAllText( path );
+      // Checking read data.
+      authInformation = data.Split( ';' );
+      if( authInformation.Length != 2 ) {
+        throw new Exception( "File wrong formatted." );
+      }
+
       // File was correct formated.
       return authInformation;
     }
