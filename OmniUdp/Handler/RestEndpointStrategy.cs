@@ -16,7 +16,32 @@ namespace OmniUdp.Handler {
   /// </summary>
   class RestEndpointStrategy : IEventHandlingStrategy {
     /// <summary>
-    ///   The logging <see langword="interface" />
+    ///   A set of credentials to use for authentication with the REST endpoint.
+    /// </summary>
+    private class Credentials {
+      /// <summary>
+      ///   A UUID that is used for the FM-Auth-Id HTTP header.
+      /// </summary>
+      public string Uuid;
+
+      /// <summary>
+      ///   A code that is used for the FM-Auth-Code HTTP header.
+      /// </summary>
+      public string Code;
+
+      /// <summary>
+      ///   Construct a new Credentials isntance.
+      /// </summary>
+      /// <param name="uuid">A UUID that is used for the FM-Auth-Id HTTP header.</param>
+      /// <param name="code">A code that is used for the FM-Auth-Code HTTP header.</param>
+      public Credentials( string uuid, string code ) {
+        Uuid = uuid;
+        Code = code;
+      }
+    }
+
+    /// <summary>
+    ///   The logging interface.
     /// </summary>
     private readonly ILog Log = LogManager.GetLogger( System.Reflection.MethodBase.GetCurrentMethod().DeclaringType );
 
@@ -41,14 +66,14 @@ namespace OmniUdp.Handler {
     private bool InsecureSSL;
 
     /// <summary>
-    ///   The path of the authentication file.
+    ///   The credentials to use for authentication on the server.
     /// </summary>
-    private string[] authInf;
+    private Credentials AuthInfo;
 
     /// <summary>
     ///   PriorityQueue for storing payload.
     /// </summary>
-    private static ConcurrentQueue<string> recievedDevices;
+    private static ConcurrentQueue<string> RecievedDevices;
     
     /// <summary>
     ///   Timer for retrying to send the payloads
@@ -67,13 +92,13 @@ namespace OmniUdp.Handler {
       InsecureSSL = insecureSSL;
 
       try {
-        authInf = ReadFromAuthFile( authFile );
+        AuthInfo = ReadFromAuthFile( authFile );
       } catch( Exception ex ) {
         Log.ErrorFormat( "Problem with authentication file: {0}", ex.Message );
         throw;
       }
 
-      recievedDevices = new ConcurrentQueue<string>();
+      RecievedDevices = new ConcurrentQueue<string>();
 
       retryTimer = new System.Timers.Timer();
       retryTimer.Elapsed += new ElapsedEventHandler(OnTimedEvent);
@@ -119,7 +144,7 @@ namespace OmniUdp.Handler {
         ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
       }
 
-      recievedDevices.Enqueue( payload );
+      RecievedDevices.Enqueue( payload );
 
        if( retryTimer.Enabled == false ) {
         Thread t = new Thread(new ThreadStart(sendRequest));
@@ -133,24 +158,22 @@ namespace OmniUdp.Handler {
     private void sendRequest() {
       string payload = "";
 
-      if( !recievedDevices.IsEmpty ) {
-      recievedDevices.TryDequeue(out payload);
+      if( !RecievedDevices.IsEmpty ) {
+      RecievedDevices.TryDequeue(out payload);
         HttpWebRequest request = (HttpWebRequest)( HttpWebRequest.Create( EndpointUri ) );
         request.Method = "POST";
         request.ContentType = "application/json";
 
         // Trying to get the authentication information. If an error occured, nothing will be sent.
-        try {
-          request.Headers.Add( "FM-Auth-Id", authInf[0] );
-          request.Headers.Add( "FM-Auth-Code", authInf[1] );
-        } catch( Exception ) {
-          return;
-        }
+        if( null != AuthInfo ) {
+          request.Headers.Add( "FM-Auth-Id", AuthInfo.Uuid );
+          request.Headers.Add( "FM-Auth-Code", AuthInfo.Code );
+        } 
 
         request.ContentLength = payload.Length;
 
         try {
-
+          Thread.Sleep( TimeSpan.FromSeconds( 5 ) );
           using( Stream requestStream = request.GetRequestStream() ) {
             using( StreamWriter writer = new StreamWriter( requestStream ) ) {
               Log.InfoFormat( "Using JSON Payload: '{0}'", payload );
@@ -173,8 +196,11 @@ namespace OmniUdp.Handler {
           retryTimer.Stop();
         } catch( WebException ex ) {
           Log.ErrorFormat( "Problem communication with RESTful endpoint: {0}", ex.Message );
-          recievedDevices.Enqueue( payload );
-          retryTimer.Start();
+          
+          if( ex.Status != WebExceptionStatus.ProtocolError ) {
+            RecievedDevices.Enqueue( payload );
+            retryTimer.Start();
+          }
         }
       }
     }
@@ -184,7 +210,7 @@ namespace OmniUdp.Handler {
     /// </summary>
     /// <param name="path">The path of the authentication file.</param>
     /// <returns>String-Array with the Auth-ID (first) and the Auth-Code (second).</returns>
-    private string[] ReadFromAuthFile( string path = "auth.txt" ) {
+    private Credentials ReadFromAuthFile( string path = "auth.txt" ) {
       string data = "";
       string[] authInformation = new string[2];
 
@@ -204,7 +230,7 @@ namespace OmniUdp.Handler {
       }
 
       // File was correct formated.
-      return authInformation;
+      return new Credentials( authInformation[ 0 ], authInformation[ 1 ] );
     }
 
     /// <summary>
