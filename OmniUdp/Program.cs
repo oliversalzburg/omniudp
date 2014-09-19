@@ -28,6 +28,11 @@ namespace OmniUdp {
       ///   The web API endpoint where to send registered events.
       /// </summary>
       internal static string RestEndpoint { get; set; }
+
+      /// <summary>
+      ///   Broadcast the UIDs on a websocket.
+      /// </summary>
+      internal static bool WebsocketServer { get; set; }
       #endregion
 
       /// <summary>
@@ -39,6 +44,11 @@ namespace OmniUdp {
       ///   The IP address from which to broadcast.
       /// </summary>
       internal static string IPAddress { get; set; }
+
+      /// <summary>
+      ///   The port on which the local server should run.
+      /// </summary>
+      internal static int Port { get; set; }
 
       /// <summary>
       ///   Use only the loopback device for broadcasting.
@@ -93,7 +103,7 @@ namespace OmniUdp {
       try {
         Console.WindowWidth = Math.Min( 160, Console.LargestWindowWidth );
         Console.WindowHeight = Math.Min( 50, Console.LargestWindowHeight );
-      } catch(ArgumentOutOfRangeException) {
+      } catch( ArgumentOutOfRangeException ) {
           // Can be thrown if the given size is too large for the screen. (Shouldn't happen)
       } catch( IOException ) {
         // Maybe there is no console window (stream redirection)
@@ -130,6 +140,12 @@ namespace OmniUdp {
             CommandLineOptions.AuthFilePath,
             new Payload.JsonFormatter( 
               CommandLineOptions.Ascii, 
+              CommandLineOptions.Identifier ) ) );
+      }
+      if( CommandLineOptions.WebsocketServer ) {
+        eventHandlingStrategy.Strategies.Add(
+          new WebsocketStrategy( new Payload.JsonFormatter(
+              CommandLineOptions.Ascii,
               CommandLineOptions.Identifier ) ) );
       }
 
@@ -196,8 +212,10 @@ namespace OmniUdp {
       OptionSet options = new OptionSet {
         {"broadcast", "Use UDP broadcasting mode of operation.", v => CommandLineOptions.UseBroadcast = true},
         {"endpoint=", "Use REST mode of operation with given endpoint.", v => CommandLineOptions.RestEndpoint = v},
+        {"websocket", "Broadcast received data over a websocket.", v => CommandLineOptions.WebsocketServer = true},
         {"interface=", "The network interface from which to broadcast. By default all interfaces are used.", v => CommandLineOptions.NetworkInterface = v},
         {"ip=", "The IP address from which to broadcast. By default all addresses are used.", v => CommandLineOptions.IPAddress = v},
+        {"port=", "The port on which the local server should run. Uses port 81 by default.", v => CommandLineOptions.Port = int.Parse(v)},
         {"loopback", "Use only the loopback device. Overrides other options.", v => CommandLineOptions.UseLoopback = true},
         {"identifier=", "The identifier to broadcast with every UID.", v => CommandLineOptions.Identifier = v},
         {"ascii", "Encode the UID as an ASCII string before broadcasting.", v => CommandLineOptions.Ascii = true},

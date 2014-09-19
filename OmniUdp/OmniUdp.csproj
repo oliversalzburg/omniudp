@@ -34,6 +34,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Fleck">
+      <HintPath>..\packages\Fleck.0.11.1.32\lib\net40\Fleck.dll</HintPath>
+    </Reference>
     <Reference Include="log4net">
       <HintPath>..\packages\log4net.2.0.0\lib\net40-full\log4net.dll</HintPath>
     </Reference>
@@ -56,6 +59,7 @@
     <Compile Include="Handler\IEventHandlingStrategy.cs" />
     <Compile Include="Handler\RestEndpointStrategy.cs" />
     <Compile Include="Handler\UdpBroadcastStrategy.cs" />
+    <Compile Include="Handler\WebsocketStrategy.cs" />
     <Compile Include="IpHelper.cs" />
     <Compile Include="Payload\ByteArrayFormatter.cs" />
     <Compile Include="Payload\JsonFormatter.cs" />
