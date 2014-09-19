@@ -91,8 +91,10 @@ namespace OmniUdp {
       }
 
       try {
-        Console.WindowWidth = 160;
-        Console.WindowHeight = 50;
+        Console.WindowWidth = Math.Min( 160, Console.LargestWindowWidth );
+        Console.WindowHeight = Math.Min( 50, Console.LargestWindowHeight );
+      } catch(ArgumentOutOfRangeException) {
+          // Can be thrown if the given size is too large for the screen. (Shouldn't happen)
       } catch( IOException ) {
         // Maybe there is no console window (stream redirection)
       } catch( NotSupportedException ) {
