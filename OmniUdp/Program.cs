@@ -130,7 +130,8 @@ namespace OmniUdp {
             CommandLineOptions.UseLoopback, 
             new Payload.ByteArrayFormatter( 
               CommandLineOptions.Identifier, 
-              CommandLineOptions.Ascii ) ) );
+              CommandLineOptions.Ascii ),
+            CommandLineOptions.Port ) );
       } 
       if( !String.IsNullOrEmpty( CommandLineOptions.RestEndpoint ) ) {
         eventHandlingStrategy.Strategies.Add( 

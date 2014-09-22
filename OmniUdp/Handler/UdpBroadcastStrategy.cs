@@ -56,6 +56,12 @@ namespace OmniUdp.Handler {
     /// <param name="port">The UDP port to broadcast to.</param>
     public UdpBroadcastStrategy( string networkInterface, string ipAddress, bool useLoopback, ByteArrayFormatter formatter, int port = DefaultPort ) {
       Log.Info( "Using UDP broadcast strategy." );
+
+      // Check if a valid port was provided; otherwise use default port instead.
+      if( 0 == port ) {
+        port = DefaultPort;
+      }
+
       PreferredFormatter = formatter;
 
       NetworkInterface = networkInterface;
@@ -96,7 +102,6 @@ namespace OmniUdp.Handler {
       byte[] payload = PreferredFormatter.GetPayloadForError( error );
 
       Log.InfoFormat( "Using payload '{0}'.", BitConverter.ToString( payload ).Replace( "-", string.Empty ) );
-
 
       if( UseLoopback ) {
         UdpBroadcaster.BroadcastLoopback( payload, Port );
