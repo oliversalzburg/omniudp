@@ -47,7 +47,24 @@ namespace OmniUdp.Handler {
 
       PreferredFormatter = formatter;
 
-      Fleck.FleckLog.Level = LogLevel.Error;
+      
+      Fleck.FleckLog.LogAction = ( level, message, ex ) => {
+        switch( level ) {
+          case LogLevel.Debug:
+            Log.Debug( message, ex );
+            break;
+          case LogLevel.Error:
+            Log.Error( message, ex );
+            break;
+          case LogLevel.Warn:
+            Log.Warn( message, ex );
+            break;
+          default:
+            Log.Info( message, ex );
+            break;
+        }
+      };
+
       var server = new WebSocketServer( String.Format( "ws://{0}:{1}", ipAddress, port ) );
       server.Start( socket => {
         
