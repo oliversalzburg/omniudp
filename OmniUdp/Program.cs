@@ -145,9 +145,12 @@ namespace OmniUdp {
       }
       if( CommandLineOptions.WebsocketServer ) {
         eventHandlingStrategy.Strategies.Add(
-          new WebsocketStrategy( new Payload.JsonFormatter(
+          new WebsocketStrategy( 
+            CommandLineOptions.IPAddress,
+            new Payload.JsonFormatter(
               CommandLineOptions.Ascii,
-              CommandLineOptions.Identifier ) ) );
+              CommandLineOptions.Identifier ),
+            CommandLineOptions.Port ) );
       }
 
       // Construct the core application and run it in a separate thread.
