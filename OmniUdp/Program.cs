@@ -117,8 +117,8 @@ namespace OmniUdp {
 
       ConsecutiveStrategiesStrategy eventHandlingStrategy = new ConsecutiveStrategiesStrategy();
 
-      // If no REST API endpoint was configured, use UDP broadcasting.
-      if( string.IsNullOrEmpty( CommandLineOptions.RestEndpoint ) ) {
+      // Use UDP broadcasting by default.
+      if( string.IsNullOrEmpty( CommandLineOptions.RestEndpoint ) && !CommandLineOptions.WebsocketServer ) {
         CommandLineOptions.UseBroadcast = true;
       }
       // Construct the appropriate event handling strategy.
