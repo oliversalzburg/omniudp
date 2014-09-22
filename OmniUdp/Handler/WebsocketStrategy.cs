@@ -32,6 +32,7 @@ namespace OmniUdp.Handler {
 
 
     public WebsocketStrategy( JsonFormatter formatter, int port = DefaultPort ) {
+      Log.Info( "Using websocket strategy." );
       PreferredFormatter = formatter;
 
       var server = new WebSocketServer( String.Format( "ws://0.0.0.0:{0}", port ) );

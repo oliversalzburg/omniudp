@@ -88,6 +88,8 @@ namespace OmniUdp.Handler {
     /// <param name="authFile">The location of the authentication file. Default: working directory.</param>
     /// <param name="formatter">The formatter to use to format the payloads.</param>
     public RestEndpointStrategy( string endpoint, bool insecureSSL, string authFile, JsonFormatter formatter ) {
+      Log.Info( "Using REST endpoint strategy." );
+
       PreferredFormatter = formatter;
       InsecureSSL = insecureSSL;
 

@@ -55,6 +55,7 @@ namespace OmniUdp.Handler {
     /// <param name="formatter">The formatter to use to format the payloads.</param>
     /// <param name="port">The UDP port to broadcast to.</param>
     public UdpBroadcastStrategy( string networkInterface, string ipAddress, bool useLoopback, ByteArrayFormatter formatter, int port = DefaultPort ) {
+      Log.Info( "Using UDP broadcast strategy." );
       PreferredFormatter = formatter;
 
       NetworkInterface = networkInterface;
