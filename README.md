@@ -1,6 +1,9 @@
 omniudp
 ======
 
-UDP interface for OmniKey 5321 CL
+CLI tool which provides multiple interfaces to receive UIDs from OmniKey 5321 CL and other RFID readers.
 
-> Originally intended to be run on RaspberryPi, but HID Global does not provide Linux ARM drivers and the CL variant is not CCID compliant :(
+Supports:
+- Broadcasting over UDP
+- Sending data to REST endpoint
+- Broadcasting over websocket
