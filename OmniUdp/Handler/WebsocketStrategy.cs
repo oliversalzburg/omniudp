@@ -15,15 +15,18 @@ namespace OmniUdp.Handler {
     /// <summary>
     ///   The default TCP port to use for broadcasts.
     /// </summary>
-    private const int DefaultPort = 81;
+    protected const int DefaultPort = 8181;
+
+    protected string IpAddress { get; set; }
+    protected int Port { get; set; }
 
     /// <summary>
     ///   The formatter to use to format the payload.
     /// </summary>
     public JsonFormatter PreferredFormatter { get; private set; }
 
-    private WebSocketServer SocketServer { get; set; }
-    private List<IWebSocketConnection> Connections { get; set; }
+    protected WebSocketServer SocketServer { get; set; }
+    protected List<IWebSocketConnection> Connections { get; set; }
 
     /// <summary>
     ///   The logging interface.
@@ -45,9 +48,10 @@ namespace OmniUdp.Handler {
         ipAddress = "0.0.0.0";
       }
 
+      IpAddress = ipAddress;
       PreferredFormatter = formatter;
+      Port = port;
 
-      
       Fleck.FleckLog.LogAction = ( level, message, ex ) => {
         switch( level ) {
           case LogLevel.Debug:
@@ -64,10 +68,15 @@ namespace OmniUdp.Handler {
             break;
         }
       };
+    }
 
-      var server = new WebSocketServer( String.Format( "ws://{0}:{1}", ipAddress, port ) );
-      server.Start( socket => {
-        
+    public virtual void Initialize() {
+      SocketServer = new WebSocketServer( String.Format( "ws://{0}:{1}", IpAddress, Port ) );
+      StartServer();
+    }
+
+    protected void StartServer() {
+      SocketServer.Start( socket => {
         socket.OnOpen = () => {
           Log.InfoFormat( "New websocket connection from {0}:{1}.", socket.ConnectionInfo.ClientIpAddress, socket.ConnectionInfo.ClientPort );
           Connections.Add( socket );

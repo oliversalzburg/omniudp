@@ -85,6 +85,11 @@ namespace OmniUdp {
       ///   Path for authentication file.
       /// </summary>
       internal static string AuthFilePath { get; set; }
+
+      /// <summary>
+      ///   Path to the .pfx certificate to use to secure connections.
+      /// </summary>
+      internal static string CertificateFilePath { get; set; }
     }
 
     /// <summary>
@@ -144,13 +149,27 @@ namespace OmniUdp {
               CommandLineOptions.Identifier ) ) );
       }
       if( CommandLineOptions.WebsocketServer ) {
-        eventHandlingStrategy.Strategies.Add(
-          new WebsocketStrategy( 
-            CommandLineOptions.IPAddress,
-            new Payload.JsonFormatter(
-              CommandLineOptions.Ascii,
-              CommandLineOptions.Identifier ),
-            CommandLineOptions.Port ) );
+        WebsocketStrategy strategy;
+        if( !string.IsNullOrEmpty( CommandLineOptions.CertificateFilePath ) ) {
+          strategy = new WebsocketSecureStrategy(
+              CommandLineOptions.IPAddress,
+              new Payload.JsonFormatter(
+                CommandLineOptions.Ascii,
+                CommandLineOptions.Identifier ),
+              CommandLineOptions.CertificateFilePath,
+              CommandLineOptions.Port );
+          
+        } else {
+          strategy = new WebsocketStrategy(
+              CommandLineOptions.IPAddress,
+              new Payload.JsonFormatter(
+                CommandLineOptions.Ascii,
+                CommandLineOptions.Identifier ),
+              CommandLineOptions.Port );
+        }
+
+        strategy.Initialize();
+        eventHandlingStrategy.Strategies.Add( strategy );
       }
 
       // Construct the core application and run it in a separate thread.
@@ -225,7 +244,8 @@ namespace OmniUdp {
         {"ascii", "Encode the UID as an ASCII string before broadcasting.", v => CommandLineOptions.Ascii = true},
         {"demo", "Enable demo mode.", v => CommandLineOptions.DemoMode = true},
         {"insecure", "Ignore SSL certificate validation errors.", v => CommandLineOptions.InsecureSSL = true},
-        {"authfile=", "The path of the authentication file", v => CommandLineOptions.AuthFilePath = v},
+        {"authfile=", "The path of the authentication file.", v => CommandLineOptions.AuthFilePath = v},
+        {"pfx=", "The path of x509 certificate.", v => CommandLineOptions.CertificateFilePath = v},
         {"h|?|help", "Shows this help message", v => CommandLineOptions.ShowHelp = v != null}
       };
 

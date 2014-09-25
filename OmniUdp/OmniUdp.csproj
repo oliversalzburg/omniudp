@@ -59,6 +59,7 @@
     <Compile Include="Handler\IEventHandlingStrategy.cs" />
     <Compile Include="Handler\RestEndpointStrategy.cs" />
     <Compile Include="Handler\UdpBroadcastStrategy.cs" />
+    <Compile Include="Handler\WebsocketSecureStrategy.cs" />
     <Compile Include="Handler\WebsocketStrategy.cs" />
     <Compile Include="IpHelper.cs" />
     <Compile Include="Payload\ByteArrayFormatter.cs" />
