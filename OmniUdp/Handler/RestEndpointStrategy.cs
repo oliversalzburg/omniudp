@@ -93,11 +93,13 @@ namespace OmniUdp.Handler {
       PreferredFormatter = formatter;
       InsecureSSL = insecureSSL;
 
-      try {
-        AuthInfo = ReadFromAuthFile( authFile );
-      } catch( Exception ex ) {
-        Log.ErrorFormat( "Problem with authentication file: {0}", ex.Message );
-        throw;
+      if( !string.IsNullOrEmpty( authFile ) && File.Exists( authFile ) ) {
+        try {
+          AuthInfo = ReadFromAuthFile( authFile );
+        } catch( Exception ex ) {
+          Log.ErrorFormat( "Problem with authentication file: {0}", ex.Message );
+          throw;
+        }
       }
 
       RecievedPayloads = new ConcurrentQueue<string>();
