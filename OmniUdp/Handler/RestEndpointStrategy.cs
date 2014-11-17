@@ -41,6 +41,21 @@ namespace OmniUdp.Handler {
     }
 
     /// <summary>
+    /// Encapsulates a UID send request.
+    /// </summary>
+    private class UidRequest {
+      /// <summary>
+      /// The payload that should be sent to the server.
+      /// </summary>
+      public string Payload { get; set; }
+
+      /// <summary>
+      /// How often was the request retried?
+      /// </summary>
+      public int RetryCount { get; set; }
+    }
+
+    /// <summary>
     ///   The logging interface.
     /// </summary>
     private readonly ILog Log = LogManager.GetLogger( System.Reflection.MethodBase.GetCurrentMethod().DeclaringType );
@@ -73,7 +88,7 @@ namespace OmniUdp.Handler {
     /// <summary>
     ///   PriorityQueue for storing payload.
     /// </summary>
-    private static ConcurrentQueue<string> RecievedPayloads;
+    private static ConcurrentQueue<UidRequest> RecievedPayloads;
     
     /// <summary>
     ///   Timer for retrying to send the payloads
@@ -93,16 +108,21 @@ namespace OmniUdp.Handler {
       PreferredFormatter = formatter;
       InsecureSSL = insecureSSL;
 
-      if( !string.IsNullOrEmpty( authFile ) && File.Exists( authFile ) ) {
-        try {
-          AuthInfo = ReadFromAuthFile( authFile );
-        } catch( Exception ex ) {
-          Log.ErrorFormat( "Problem with authentication file: {0}", ex.Message );
-          throw;
+      if( !string.IsNullOrEmpty( authFile ) ) {
+        if( !File.Exists( authFile ) ) {
+          Log.WarnFormat( "The file '{0}' doesn't exist. No authentication credentials will be available!", authFile );
+
+        } else {
+          try {
+            AuthInfo = ReadFromAuthFile( authFile );
+          } catch( Exception ex ) {
+            Log.ErrorFormat( "Problem with authentication file: {0}", ex.Message );
+            throw;
+          }
         }
       }
 
-      RecievedPayloads = new ConcurrentQueue<string>();
+      RecievedPayloads = new ConcurrentQueue<UidRequest>();
 
       RetryTimer = new System.Timers.Timer();
       RetryTimer.Elapsed += new ElapsedEventHandler( OnTimedEvent );
@@ -148,7 +168,7 @@ namespace OmniUdp.Handler {
         ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
       }
 
-      RecievedPayloads.Enqueue( payload );
+      RecievedPayloads.Enqueue( new UidRequest(){ Payload = payload } );
 
       if( RetryTimer.Enabled == false ) {
         Thread t = new Thread( SendRequest );
@@ -160,8 +180,8 @@ namespace OmniUdp.Handler {
     ///   Sends payloads from the ConcurrentQueue.
     /// </summary>
     private void SendRequest() {
-      string payload = "";
-      if( !RecievedPayloads.IsEmpty && RecievedPayloads.TryDequeue( out payload ) ) {
+      UidRequest uidRequest = null;
+      if( !RecievedPayloads.IsEmpty && RecievedPayloads.TryDequeue( out uidRequest ) ) {
         HttpWebRequest request = (HttpWebRequest)( HttpWebRequest.Create( EndpointUri ) );
         request.Method = "POST";
         request.ContentType = "application/json";
@@ -170,15 +190,15 @@ namespace OmniUdp.Handler {
         if( null != AuthInfo ) {
           request.Headers.Add( "FM-Auth-Id", AuthInfo.Uuid );
           request.Headers.Add( "FM-Auth-Code", AuthInfo.Code );
-        } 
+        }
 
-        request.ContentLength = payload.Length;
+        request.ContentLength = uidRequest.Payload.Length;
 
         try {
           using( Stream requestStream = request.GetRequestStream() ) {
             using( StreamWriter writer = new StreamWriter( requestStream ) ) {
-              Log.InfoFormat( "Using JSON Payload: '{0}'", payload );
-              writer.Write( payload );
+              Log.InfoFormat( "Using JSON Payload: '{0}' (Retry: {1})", uidRequest.Payload, uidRequest.RetryCount );
+              writer.Write( uidRequest.Payload );
             }
           }
 
@@ -196,9 +216,15 @@ namespace OmniUdp.Handler {
           RetryTimer.Stop();
 
         } catch( WebException ex ) {
-          Log.ErrorFormat( "Problem communication with RESTful endpoint: {0}", ex.Message );
-          
-          RecievedPayloads.Enqueue( payload );
+          Log.ErrorFormat( "Problem communicating with RESTful endpoint: {0}", ex.Message );
+
+          if( uidRequest.RetryCount <= 9 ) {
+            RecievedPayloads.Enqueue( uidRequest );
+            ++uidRequest.RetryCount;
+          } else {
+            Log.WarnFormat( "Giving up on payload after {0} retries!", uidRequest.RetryCount );
+          }
+
           RetryTimer.Start();
         }
       }
