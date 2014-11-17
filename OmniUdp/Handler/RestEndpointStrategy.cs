@@ -85,7 +85,7 @@ namespace OmniUdp.Handler {
     /// </summary>
     /// <param name="endpoint">The API endpoint to connect to.</param>
     /// <param name="insecureSSL">Ignore SSL certificate errors.</param>
-    /// <param name="authFile">The location of the authentication file. Default: working directory.</param>
+    /// <param name="authFile">The location of the authentication file.</param>
     /// <param name="formatter">The formatter to use to format the payloads.</param>
     public RestEndpointStrategy( string endpoint, bool insecureSSL, string authFile, JsonFormatter formatter ) {
       Log.Info( "Using REST endpoint strategy." );
@@ -103,7 +103,7 @@ namespace OmniUdp.Handler {
       RecievedPayloads = new ConcurrentQueue<string>();
 
       RetryTimer = new System.Timers.Timer();
-      RetryTimer.Elapsed += new ElapsedEventHandler(OnTimedEvent);
+      RetryTimer.Elapsed += new ElapsedEventHandler( OnTimedEvent );
       RetryTimer.Interval = TimeSpan.FromSeconds( 10.0 ).TotalMilliseconds;
 
       Endpoint = endpoint;
@@ -181,7 +181,6 @@ namespace OmniUdp.Handler {
           }
 
           using( HttpWebResponse response = (HttpWebResponse)request.GetResponse() ) {
-            //Log.Info( response.StatusDescription );
             using( Stream dataStream = response.GetResponseStream() ) {
               using( StreamReader reader = new StreamReader( dataStream ) ) {
                 // Read the content. 
@@ -191,7 +190,7 @@ namespace OmniUdp.Handler {
               }
             }
           }
-          // stop retry timer if sending was successful.
+          // Stop retry timer if sending was successful.
           RetryTimer.Stop();
 
         } catch( WebException ex ) {
@@ -237,7 +236,7 @@ namespace OmniUdp.Handler {
     /// <param name="source"></param>
     /// <param name="e"></param>
     private void OnTimedEvent(object source, ElapsedEventArgs e) {
-        Thread t = new Thread(new ThreadStart(SendRequest));
+        Thread t = new Thread( new ThreadStart( SendRequest ) );
         t.Start();
     }
   }
