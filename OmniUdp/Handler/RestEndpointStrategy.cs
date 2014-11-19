@@ -115,6 +115,8 @@ namespace OmniUdp.Handler {
         } else {
           try {
             AuthInfo = ReadFromAuthFile( authFile );
+            Log.InfoFormat( "Read authentication data from '{0}'", authFile );
+
           } catch( Exception ex ) {
             Log.ErrorFormat( "Problem with authentication file: {0}", ex.Message );
             throw;
