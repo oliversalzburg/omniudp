@@ -1,273 +1,258 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using log4net;
+using OmniUdp.Payload;
+using System;
 using System.Collections.Concurrent;
 using System.IO;
-using System.Linq;
 using System.Net;
-using System.Text;
 using System.Threading;
 using System.Timers;
-using log4net;
-using OmniUdp.Payload;
 
 namespace OmniUdp.Handler {
-  /// <summary>
-  ///   An event handling strategy that sends events to a RESTful API endpoint.
-  /// </summary>
-  class RestEndpointStrategy : IEventHandlingStrategy {
     /// <summary>
-    ///   A set of credentials to use for authentication with the REST endpoint.
+    ///   An event handling strategy that sends events to a RESTful API endpoint.
     /// </summary>
-    private class Credentials {
-      /// <summary>
-      ///   A UUID that is used for the FM-Auth-Id HTTP header.
-      /// </summary>
-      public string Uuid;
+    class RestEndpointStrategy : IEventHandlingStrategy {
+        /// <summary>
+        ///   A set of credentials to use for authentication with the REST endpoint.
+        /// </summary>
+        private class Credentials {
+            /// <summary>
+            ///   The bearer token for the Authentication HTTP header.
+            /// </summary>
+            public string Code;
 
-      /// <summary>
-      ///   A code that is used for the FM-Auth-Code HTTP header.
-      /// </summary>
-      public string Code;
-
-      /// <summary>
-      ///   Construct a new Credentials isntance.
-      /// </summary>
-      /// <param name="uuid">A UUID that is used for the FM-Auth-Id HTTP header.</param>
-      /// <param name="code">A code that is used for the FM-Auth-Code HTTP header.</param>
-      public Credentials( string uuid, string code ) {
-        Uuid = uuid;
-        Code = code;
-      }
-    }
-
-    /// <summary>
-    /// Encapsulates a UID send request.
-    /// </summary>
-    private class UidRequest {
-      /// <summary>
-      /// The payload that should be sent to the server.
-      /// </summary>
-      public string Payload { get; set; }
-
-      /// <summary>
-      /// How often was the request retried?
-      /// </summary>
-      public int RetryCount { get; set; }
-    }
-
-    /// <summary>
-    ///   The logging interface.
-    /// </summary>
-    private readonly ILog Log = LogManager.GetLogger( System.Reflection.MethodBase.GetCurrentMethod().DeclaringType );
-
-    /// <summary>
-    ///   The formatter to use to format the payload.
-    /// </summary>
-    public JsonFormatter PreferredFormatter { get; private set; }
-
-    /// <summary>
-    ///   The RESTful API endpoint to use.
-    /// </summary>
-    protected string Endpoint { get; private set; }
-
-    /// <summary>
-    ///   The endpoint expressed in a Uri instance.
-    /// </summary>
-    private Uri EndpointUri { get; set; }
-
-    /// <summary>
-    ///   Ignore SSL certificate errors.
-    /// </summary>
-    private bool InsecureSSL;
-
-    /// <summary>
-    ///   The credentials to use for authentication on the server.
-    /// </summary>
-    private Credentials AuthInfo;
-
-    /// <summary>
-    ///   PriorityQueue for storing payload.
-    /// </summary>
-    private static ConcurrentQueue<UidRequest> RecievedPayloads;
-    
-    /// <summary>
-    ///   Timer for retrying to send the payloads
-    /// </summary>
-    private static System.Timers.Timer RetryTimer;
-
-    /// <summary>
-    ///   Construct a new RestEndpointStrategy instance.
-    /// </summary>
-    /// <param name="endpoint">The API endpoint to connect to.</param>
-    /// <param name="insecureSSL">Ignore SSL certificate errors.</param>
-    /// <param name="authFile">The location of the authentication file.</param>
-    /// <param name="formatter">The formatter to use to format the payloads.</param>
-    public RestEndpointStrategy( string endpoint, bool insecureSSL, string authFile, JsonFormatter formatter ) {
-      Log.Info( "Using REST endpoint strategy." );
-
-      PreferredFormatter = formatter;
-      InsecureSSL = insecureSSL;
-
-      if( !string.IsNullOrEmpty( authFile ) ) {
-        if( !File.Exists( authFile ) ) {
-          Log.WarnFormat( "The file '{0}' doesn't exist. No authentication credentials will be available!", authFile );
-
-        } else {
-          try {
-            AuthInfo = ReadFromAuthFile( authFile );
-            Log.InfoFormat( "Read authentication data from '{0}'", authFile );
-
-          } catch( Exception ex ) {
-            Log.ErrorFormat( "Problem with authentication file: {0}", ex.Message );
-            throw;
-          }
-        }
-      }
-
-      RecievedPayloads = new ConcurrentQueue<UidRequest>();
-
-      RetryTimer = new System.Timers.Timer();
-      RetryTimer.Elapsed += new ElapsedEventHandler( OnTimedEvent );
-      RetryTimer.Interval = TimeSpan.FromSeconds( 10.0 ).TotalMilliseconds;
-
-      Endpoint = endpoint;
-      EndpointUri = new Uri( Endpoint );
-
-      CheckConfiguration();
-    }
-
-    /// <summary>
-    ///   Validates the parameters used to construct the strategy and logs relevant details.
-    /// </summary>
-    private void CheckConfiguration() {
-      Log.InfoFormat( "Using RESTful API endpoint '{0}'.", Endpoint );
-    }
-
-    /// <summary>
-    ///   Handle an event that should be treated as an error.
-    /// </summary>
-    /// <param name="payload">The payload to send with the event.</param>
-    public void HandleErrorEvent( byte[] error ) {
-      string payload = PreferredFormatter.GetPayloadForError( error );
-      SendPayload( payload );
-    }
-
-    /// <summary>
-    ///   Handle an event that should be treated as a UID being successfully read.
-    /// </summary>
-    /// <param name="payload">The payload to send with the event.</param>
-    public void HandleUidEvent( byte[] uid ) {
-      string payload = PreferredFormatter.GetPayload( uid );
-      SendPayload( payload );
-    }
-
-    /// <summary>
-    ///   Starts a Thread for sending a payload to the API endpoint.
-    /// </summary>
-    /// <param name="payload">The payload to send.</param>
-    private void SendPayload( string payload ) {
-      if( InsecureSSL ) {
-        ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
-      }
-
-      RecievedPayloads.Enqueue( new UidRequest(){ Payload = payload } );
-
-      if( RetryTimer.Enabled == false ) {
-        Thread t = new Thread( SendRequest );
-        t.Start();
-      }
-    }
-
-    /// <summary>
-    ///   Sends payloads from the ConcurrentQueue.
-    /// </summary>
-    private void SendRequest() {
-      UidRequest uidRequest = null;
-      if( !RecievedPayloads.IsEmpty && RecievedPayloads.TryDequeue( out uidRequest ) ) {
-        HttpWebRequest request = (HttpWebRequest)( HttpWebRequest.Create( EndpointUri ) );
-        request.Method = "POST";
-        request.ContentType = "application/json";
-
-        // Trying to get the authentication information. If an error occured, nothing will be sent.
-        if( null != AuthInfo ) {
-          request.Headers.Add( "FM-Auth-Id", AuthInfo.Uuid );
-          request.Headers.Add( "FM-Auth-Code", AuthInfo.Code );
-        }
-
-        request.ContentLength = uidRequest.Payload.Length;
-
-        try {
-          using( Stream requestStream = request.GetRequestStream() ) {
-            using( StreamWriter writer = new StreamWriter( requestStream ) ) {
-              Log.InfoFormat( "Using JSON Payload: '{0}' (Retry: {1})", uidRequest.Payload, uidRequest.RetryCount );
-              writer.Write( uidRequest.Payload );
+            /// <summary>
+            ///   Construct a new Credentials isntance.
+            /// </summary>
+            /// <param name="code">The bearer token for the Authentication HTTP header.</param>
+            public Credentials( string code ) {
+                Code = code;
             }
-          }
-
-          using( HttpWebResponse response = (HttpWebResponse)request.GetResponse() ) {
-            using( Stream dataStream = response.GetResponseStream() ) {
-              using( StreamReader reader = new StreamReader( dataStream ) ) {
-                // Read the content. 
-                string responseFromServer = reader.ReadToEnd();
-                // Display the content.
-                Log.Info( responseFromServer );
-              }
-            }
-          }
-          // Stop retry timer if sending was successful.
-          RetryTimer.Stop();
-
-        } catch( WebException ex ) {
-          Log.ErrorFormat( "Problem communicating with RESTful endpoint: {0}", ex.Message );
-
-          if( uidRequest.RetryCount <= 9 ) {
-            RecievedPayloads.Enqueue( uidRequest );
-            ++uidRequest.RetryCount;
-          } else {
-            Log.WarnFormat( "Giving up on payload after {0} retries!", uidRequest.RetryCount );
-          }
-
-          RetryTimer.Start();
         }
-      }
+
+        /// <summary>
+        /// Encapsulates a UID send request.
+        /// </summary>
+        private class UidRequest {
+            /// <summary>
+            /// The payload that should be sent to the server.
+            /// </summary>
+            public string Payload { get; set; }
+
+            /// <summary>
+            /// How often was the request retried?
+            /// </summary>
+            public int RetryCount { get; set; }
+        }
+
+        /// <summary>
+        ///   The logging interface.
+        /// </summary>
+        private readonly ILog Log = LogManager.GetLogger( System.Reflection.MethodBase.GetCurrentMethod().DeclaringType );
+
+        /// <summary>
+        ///   The formatter to use to format the payload.
+        /// </summary>
+        public JsonFormatter PreferredFormatter { get; private set; }
+
+        /// <summary>
+        ///   The RESTful API endpoint to use.
+        /// </summary>
+        protected string Endpoint { get; private set; }
+
+        /// <summary>
+        ///   The endpoint expressed in a Uri instance.
+        /// </summary>
+        private Uri EndpointUri { get; set; }
+
+        /// <summary>
+        ///   Ignore SSL certificate errors.
+        /// </summary>
+        private bool InsecureSSL;
+
+        /// <summary>
+        ///   The credentials to use for authentication on the server.
+        /// </summary>
+        private Credentials AuthInfo;
+
+        /// <summary>
+        ///   PriorityQueue for storing payload.
+        /// </summary>
+        private static ConcurrentQueue<UidRequest> RecievedPayloads;
+
+        /// <summary>
+        ///   Timer for retrying to send the payloads
+        /// </summary>
+        private static System.Timers.Timer RetryTimer;
+
+        /// <summary>
+        ///   Construct a new RestEndpointStrategy instance.
+        /// </summary>
+        /// <param name="endpoint">The API endpoint to connect to.</param>
+        /// <param name="insecureSSL">Ignore SSL certificate errors.</param>
+        /// <param name="authFile">The location of the authentication file.</param>
+        /// <param name="formatter">The formatter to use to format the payloads.</param>
+        public RestEndpointStrategy( string endpoint, bool insecureSSL, string authFile, JsonFormatter formatter ) {
+            Log.Info( "Using REST endpoint strategy." );
+
+            PreferredFormatter = formatter;
+            InsecureSSL = insecureSSL;
+
+            if( !string.IsNullOrEmpty( authFile ) ) {
+                if( !File.Exists( authFile ) ) {
+                    Log.WarnFormat( "The file '{0}' doesn't exist. No authentication credentials will be available!", authFile );
+
+                } else {
+                    try {
+                        AuthInfo = ReadFromAuthFile( authFile );
+                        Log.InfoFormat( "Read authentication data from '{0}'", authFile );
+
+                    } catch( Exception ex ) {
+                        Log.ErrorFormat( "Problem with authentication file: {0}", ex.Message );
+                        throw;
+                    }
+                }
+            }
+
+            RecievedPayloads = new ConcurrentQueue<UidRequest>();
+
+            RetryTimer = new System.Timers.Timer();
+            RetryTimer.Elapsed += new ElapsedEventHandler( OnTimedEvent );
+            RetryTimer.Interval = TimeSpan.FromSeconds( 10.0 ).TotalMilliseconds;
+
+            Endpoint = endpoint;
+            EndpointUri = new Uri( Endpoint );
+
+            CheckConfiguration();
+        }
+
+        /// <summary>
+        ///   Validates the parameters used to construct the strategy and logs relevant details.
+        /// </summary>
+        private void CheckConfiguration() {
+            Log.InfoFormat( "Using RESTful API endpoint '{0}'.", Endpoint );
+        }
+
+        /// <summary>
+        ///   Handle an event that should be treated as an error.
+        /// </summary>
+        /// <param name="payload">The payload to send with the event.</param>
+        public void HandleErrorEvent( byte[] error ) {
+            string payload = PreferredFormatter.GetPayloadForError( error );
+            SendPayload( payload );
+        }
+
+        /// <summary>
+        ///   Handle an event that should be treated as a UID being successfully read.
+        /// </summary>
+        /// <param name="payload">The payload to send with the event.</param>
+        public void HandleUidEvent( byte[] uid ) {
+            string payload = PreferredFormatter.GetPayload( uid );
+            SendPayload( payload );
+        }
+
+        /// <summary>
+        ///   Starts a Thread for sending a payload to the API endpoint.
+        /// </summary>
+        /// <param name="payload">The payload to send.</param>
+        private void SendPayload( string payload ) {
+            if( InsecureSSL ) {
+                ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
+            }
+
+            RecievedPayloads.Enqueue( new UidRequest() { Payload = payload } );
+
+            if( RetryTimer.Enabled == false ) {
+                Thread t = new Thread( SendRequest );
+                t.Start();
+            }
+        }
+
+        /// <summary>
+        ///   Sends payloads from the ConcurrentQueue.
+        /// </summary>
+        private void SendRequest() {
+            UidRequest uidRequest = null;
+            if( !RecievedPayloads.IsEmpty && RecievedPayloads.TryDequeue( out uidRequest ) ) {
+                HttpWebRequest request = (HttpWebRequest)( HttpWebRequest.Create( EndpointUri ) );
+                request.Method = "POST";
+                request.ContentType = "application/json";
+
+                // Trying to get the authentication information. If an error occured, nothing will be sent.
+                if( null != AuthInfo ) {
+                    request.Headers.Add( "Authorization", "Bearer " + AuthInfo.Code );
+                }
+
+                request.ContentLength = uidRequest.Payload.Length;
+
+                try {
+                    using( Stream requestStream = request.GetRequestStream() ) {
+                        using( StreamWriter writer = new StreamWriter( requestStream ) ) {
+                            Log.InfoFormat( "Using JSON Payload: '{0}' (Retry: {1})", uidRequest.Payload, uidRequest.RetryCount );
+                            writer.Write( uidRequest.Payload );
+                        }
+                    }
+
+                    using( HttpWebResponse response = (HttpWebResponse)request.GetResponse() ) {
+                        using( Stream dataStream = response.GetResponseStream() ) {
+                            using( StreamReader reader = new StreamReader( dataStream ) ) {
+                                // Read the content. 
+                                string responseFromServer = reader.ReadToEnd();
+                                // Display the content.
+                                Log.Info( responseFromServer );
+                            }
+                        }
+                    }
+                    // Stop retry timer if sending was successful.
+                    RetryTimer.Stop();
+
+                } catch( WebException ex ) {
+                    Log.ErrorFormat( "Problem communicating with RESTful endpoint: {0}", ex.Message );
+
+                    if( uidRequest.RetryCount <= 9 ) {
+                        RecievedPayloads.Enqueue( uidRequest );
+                        ++uidRequest.RetryCount;
+                    } else {
+                        Log.WarnFormat( "Giving up on payload after {0} retries!", uidRequest.RetryCount );
+                    }
+
+                    RetryTimer.Start();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Reads text from the authentication file.
+        /// </summary>
+        /// <param name="path">The path of the authentication file.</param>
+        /// <returns>Credentials</returns>
+        private Credentials ReadFromAuthFile( string path = "auth.txt" ) {
+            string authInformation;
+
+            if( string.IsNullOrEmpty( path ) ) {
+                throw new ArgumentNullException( "path" );
+            }
+            if( !File.Exists( path ) ) {
+                throw new InvalidOperationException( String.Format( "Auth file {0} does not exist.", path ) );
+            }
+
+            // Read data from file.
+            authInformation = System.IO.File.ReadAllText( path );
+            if( String.IsNullOrEmpty( authInformation ) ) {
+                throw new Exception( "Invalid auth token." );
+            }
+
+            return new Credentials( authInformation );
+        }
+
+        /// <summary>
+        /// When Timer elapses, retry sending the recieved Devices.
+        /// </summary>
+        /// <param name="source"></param>
+        /// <param name="e"></param>
+        private void OnTimedEvent( object source, ElapsedEventArgs e ) {
+            Thread t = new Thread( new ThreadStart( SendRequest ) );
+            t.Start();
+        }
     }
-
-    /// <summary>
-    /// Reads text from the authentication file.
-    /// </summary>
-    /// <param name="path">The path of the authentication file.</param>
-    /// <returns>String-Array with the Auth-ID (first) and the Auth-Code (second).</returns>
-    private Credentials ReadFromAuthFile( string path = "auth.txt" ) {
-      string data = "";
-      string[] authInformation = new string[2];
-
-      if( string.IsNullOrEmpty( path ) ) {
-        throw new ArgumentNullException( "path" );
-      }
-      if( !File.Exists( path ) ) {
-        throw new InvalidOperationException( String.Format( "Auth file {0} does not exist.", path ) );
-      }
-
-      // Read data from file.
-      data = System.IO.File.ReadAllText( path );
-      // Checking read data.
-      authInformation = data.Split( ';' );
-      if( authInformation.Length != 2 ) {
-        throw new Exception( "File wrong formatted." );
-      }
-
-      // File was correct formated.
-      return new Credentials( authInformation[ 0 ], authInformation[ 1 ] );
-    }
-
-    /// <summary>
-    /// When Timer elapses, retry sending the recieved Devices.
-    /// </summary>
-    /// <param name="source"></param>
-    /// <param name="e"></param>
-    private void OnTimedEvent(object source, ElapsedEventArgs e) {
-        Thread t = new Thread( new ThreadStart( SendRequest ) );
-        t.Start();
-    }
-  }
 }
