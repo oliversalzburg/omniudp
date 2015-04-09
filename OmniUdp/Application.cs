@@ -35,6 +35,11 @@ namespace OmniUdp {
         public bool Destroyed { get; set; }
 
         /// <summary>
+        /// Used to periodically test for newly connected readers.
+        /// </summary>
+        private System.Timers.Timer RetryTimer { get; set; }
+
+        /// <summary>
         ///   Construct the application.
         /// </summary>
         public Application( IEventHandlingStrategy eventHandlingStrategy ) {
@@ -68,31 +73,54 @@ namespace OmniUdp {
 
                 string[] readernames = null;
                 try {
+                    Log.Info( "Attempting to retrieve connected readers..." );
                     readernames = Context.GetReaders();
-                } catch( PCSCException ) { } finally {
-                    if( null == readernames || 0 == readernames.Length ) {
-                        throw new InvalidOperationException( "There are currently no readers installed." );
+
+                } catch( PCSCException ) { }
+
+                SCardMonitor monitor = null;
+
+                if( null == readernames || 0 == readernames.Length ) {
+                    //throw new InvalidOperationException( "There are currently no readers installed." );
+                    Log.Warn( "There are currently no readers installed. Re-attempting in 10 seconds." );
+
+                    if( null == RetryTimer ) {
+                        RetryTimer = new System.Timers.Timer( TimeSpan.FromSeconds( 10 ).TotalMilliseconds );
+                        RetryTimer.Elapsed += ( e, args ) => { ExecuteContext(); };
+                        RetryTimer.Start();
                     }
+
+                } else {
+                    if( null != RetryTimer ) {
+                        RetryTimer.Stop();
+                        RetryTimer.Dispose();
+                    }
+
+                    // Create a monitor object with its own PC/SC context.
+                    monitor = new SCardMonitor( new SCardContext(), SCardScope.System );
+
+                    // Point the callback function(s) to the static defined methods below.
+                    monitor.CardInserted += CardInserted;
+
+                    foreach( string reader in readernames ) {
+                        Log.InfoFormat( "Start monitoring for reader '{0}'.", reader );
+                    }
+
+                    monitor.Start( readernames );
                 }
-
-                // Create a monitor object with its own PC/SC context.
-                SCardMonitor monitor = new SCardMonitor( new SCardContext(), SCardScope.System );
-
-                // Point the callback function(s) to the static defined methods below.
-                monitor.CardInserted += CardInserted;
-
-                foreach( string reader in readernames ) {
-                    Log.InfoFormat( "Start monitoring for reader '{0}'.", reader );
-                }
-
-                monitor.Start( readernames );
 
                 // Wait for the parent application to signal us to exit.
-                ExitApplication = new ManualResetEvent( false );
+                if( null == ExitApplication ) {
+                    ExitApplication = new ManualResetEvent( false );
+                }
                 ExitApplication.WaitOne();
 
                 // Stop monitoring
-                monitor.Cancel();
+                if( null != monitor ) {
+                    monitor.Cancel();
+                    monitor.Dispose();
+                    monitor = null;
+                }
             }
         }
 
