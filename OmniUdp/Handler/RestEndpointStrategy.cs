@@ -1,28 +1,28 @@
-﻿using log4net;
-using OmniUdp.Payload;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Net;
 using System.Threading;
 using System.Timers;
+using log4net;
+using OmniUdp.Payload;
 
 namespace OmniUdp.Handler {
     /// <summary>
-    ///   An event handling strategy that sends events to a RESTful API endpoint.
+    ///     An event handling strategy that sends events to a RESTful API endpoint.
     /// </summary>
-    class RestEndpointStrategy : IEventHandlingStrategy {
+    internal class RestEndpointStrategy : IEventHandlingStrategy {
         /// <summary>
-        ///   A set of credentials to use for authentication with the REST endpoint.
+        ///     A set of credentials to use for authentication with the REST endpoint.
         /// </summary>
         private class Credentials {
             /// <summary>
-            ///   The bearer token for the Authentication HTTP header.
+            ///     The bearer token for the Authentication HTTP header.
             /// </summary>
             public string Code;
 
             /// <summary>
-            ///   Construct a new Credentials isntance.
+            ///     Construct a new Credentials isntance.
             /// </summary>
             /// <param name="code">The bearer token for the Authentication HTTP header.</param>
             public Credentials( string code ) {
@@ -31,88 +31,95 @@ namespace OmniUdp.Handler {
         }
 
         /// <summary>
-        /// Encapsulates a UID send request.
+        ///     Encapsulates a UID send request.
         /// </summary>
         private class UidRequest {
             /// <summary>
-            /// The payload that should be sent to the server.
+            ///     The payload that should be sent to the server.
             /// </summary>
             public string Payload { get; set; }
 
             /// <summary>
-            /// How often was the request retried?
+            ///     How often was the request retried?
             /// </summary>
             public int RetryCount { get; set; }
         }
 
         /// <summary>
-        ///   The logging interface.
+        ///     The logging interface.
         /// </summary>
         private readonly ILog Log = LogManager.GetLogger( System.Reflection.MethodBase.GetCurrentMethod().DeclaringType );
 
         /// <summary>
-        ///   The formatter to use to format the payload.
+        ///     The formatter to use to format the payload.
         /// </summary>
         public JsonFormatter PreferredFormatter { get; private set; }
 
         /// <summary>
-        ///   The RESTful API endpoint to use.
+        ///     The RESTful API endpoint to use.
         /// </summary>
         protected string Endpoint { get; private set; }
 
         /// <summary>
-        ///   The endpoint expressed in a Uri instance.
+        ///     The endpoint expressed in a Uri instance.
         /// </summary>
         private Uri EndpointUri { get; set; }
 
         /// <summary>
-        ///   Ignore SSL certificate errors.
+        ///     Ignore SSL certificate errors.
         /// </summary>
         private bool InsecureSSL;
 
         /// <summary>
-        ///   The credentials to use for authentication on the server.
+        ///     The IP address to send the requests from.
+        /// </summary>
+        private string IpAddress;
+
+        /// <summary>
+        ///     The credentials to use for authentication on the server.
         /// </summary>
         private Credentials AuthInfo;
 
         /// <summary>
-        ///   PriorityQueue for storing payload.
+        ///     PriorityQueue for storing payload.
         /// </summary>
         private static ConcurrentQueue<UidRequest> RecievedPayloads;
 
         /// <summary>
-        ///   Timer for retrying to send the payloads
+        ///     Timer for retrying to send the payloads
         /// </summary>
         private static System.Timers.Timer RetryTimer;
 
         /// <summary>
-        ///   Construct a new RestEndpointStrategy instance.
+        ///     Construct a new RestEndpointStrategy instance.
         /// </summary>
         /// <param name="endpoint">The API endpoint to connect to.</param>
         /// <param name="insecureSSL">Ignore SSL certificate errors.</param>
+        /// <param name="ipAddress">The IP address to send the requests from.</param>
         /// <param name="authFile">The location of the authentication file.</param>
         /// <param name="formatter">The formatter to use to format the payloads.</param>
-        public RestEndpointStrategy( string endpoint, bool insecureSSL, string authFile, JsonFormatter formatter ) {
+        public RestEndpointStrategy( string endpoint, bool insecureSSL, string ipAddress, string authFile, JsonFormatter formatter ) {
             Log.Info( "Using REST endpoint strategy." );
 
             PreferredFormatter = formatter;
             InsecureSSL = insecureSSL;
+            IpAddress = ipAddress ?? "0.0.0.0";
 
             if( !string.IsNullOrEmpty( authFile ) ) {
                 if( !File.Exists( authFile ) ) {
                     Log.WarnFormat( "The file '{0}' doesn't exist. No authentication credentials will be available!", authFile );
-
                 } else {
                     try {
                         AuthInfo = ReadFromAuthFile( authFile );
                         Log.InfoFormat( "Read authentication data from '{0}'", authFile );
-
                     } catch( Exception ex ) {
                         Log.ErrorFormat( "Problem with authentication file: {0}", ex.Message );
                         throw;
                     }
                 }
             }
+
+            Log.InfoFormat( "REST requests will be sent from '{0}'.", IpAddress );
 
             RecievedPayloads = new ConcurrentQueue<UidRequest>();
 
@@ -127,14 +134,14 @@ namespace OmniUdp.Handler {
         }
 
         /// <summary>
-        ///   Validates the parameters used to construct the strategy and logs relevant details.
+        ///     Validates the parameters used to construct the strategy and logs relevant details.
         /// </summary>
         private void CheckConfiguration() {
             Log.InfoFormat( "Using RESTful API endpoint '{0}'.", Endpoint );
         }
 
         /// <summary>
-        ///   Handle an event that should be treated as an error.
+        ///     Handle an event that should be treated as an error.
         /// </summary>
         /// <param name="payload">The payload to send with the event.</param>
         public void HandleErrorEvent( byte[] error ) {
@@ -143,7 +150,7 @@ namespace OmniUdp.Handler {
         }
 
         /// <summary>
-        ///   Handle an event that should be treated as a UID being successfully read.
+        ///     Handle an event that should be treated as a UID being successfully read.
         /// </summary>
         /// <param name="payload">The payload to send with the event.</param>
         public void HandleUidEvent( byte[] uid ) {
@@ -152,7 +159,7 @@ namespace OmniUdp.Handler {
         }
 
         /// <summary>
-        ///   Starts a Thread for sending a payload to the API endpoint.
+        ///     Starts a Thread for sending a payload to the API endpoint.
         /// </summary>
         /// <param name="payload">The payload to send.</param>
         private void SendPayload( string payload ) {
@@ -160,7 +167,10 @@ namespace OmniUdp.Handler {
                 ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
             }
 
-            RecievedPayloads.Enqueue( new UidRequest() { Payload = payload } );
+            RecievedPayloads.Enqueue(
+                new UidRequest() {
+                    Payload = payload
+                } );
 
             if( RetryTimer.Enabled == false ) {
                 Thread t = new Thread( SendRequest );
@@ -169,7 +179,7 @@ namespace OmniUdp.Handler {
         }
 
         /// <summary>
-        ///   Sends payloads from the ConcurrentQueue.
+        ///     Sends payloads from the ConcurrentQueue.
         /// </summary>
         private void SendRequest() {
             UidRequest uidRequest = null;
@@ -184,6 +194,8 @@ namespace OmniUdp.Handler {
                 }
 
                 request.ContentLength = uidRequest.Payload.Length;
+
+                request.ServicePoint.BindIPEndPointDelegate = ( servicePoint, remoteEndPoint, retryCount ) => new IPEndPoint( IPAddress.Parse( IpAddress ), 0 );
 
                 try {
                     using( Stream requestStream = request.GetRequestStream() ) {
@@ -205,7 +217,6 @@ namespace OmniUdp.Handler {
                     }
                     // Stop retry timer if sending was successful.
                     RetryTimer.Stop();
-
                 } catch( WebException ex ) {
                     Log.ErrorFormat( "Problem communicating with RESTful endpoint: {0}", ex.Message );
 
@@ -222,7 +233,7 @@ namespace OmniUdp.Handler {
         }
 
         /// <summary>
-        /// Reads text from the authentication file.
+        ///     Reads text from the authentication file.
         /// </summary>
         /// <param name="path">The path of the authentication file.</param>
         /// <returns>Credentials</returns>
@@ -246,7 +257,7 @@ namespace OmniUdp.Handler {
         }
 
         /// <summary>
-        /// When Timer elapses, retry sending the recieved Devices.
+        ///     When Timer elapses, retry sending the recieved Devices.
         /// </summary>
         /// <param name="source"></param>
         /// <param name="e"></param>

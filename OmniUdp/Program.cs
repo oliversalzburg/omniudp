@@ -146,6 +146,7 @@ namespace OmniUdp {
                   new RestEndpointStrategy(
                     CommandLineOptions.RestEndpoint,
                     CommandLineOptions.InsecureSSL,
+                    CommandLineOptions.IPAddress,
                     CommandLineOptions.AuthFilePath,
                     new Payload.JsonFormatter(
                       CommandLineOptions.Ascii,
