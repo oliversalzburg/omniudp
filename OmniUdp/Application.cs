@@ -2,7 +2,9 @@
 using OmniUdp.Handler;
 using PCSC;
 using System;
+using System.Diagnostics.Eventing.Reader;
 using System.Threading;
+using Timer = System.Timers.Timer;
 
 namespace OmniUdp {
     /// <summary>
@@ -67,61 +69,66 @@ namespace OmniUdp {
         ///   There are currently no readers installed.
         /// </exception>
         protected virtual void ExecuteContext() {
-            // Retrieve the names of all installed readers.
-            using( Context = new SCardContext() ) {
-                Context.Establish( SCardScope.System );
+	        try {
+		        // Retrieve the names of all installed readers.
+		        using( Context = new SCardContext() ) {
+			        Context.Establish( SCardScope.System );
 
-                string[] readernames = null;
-                try {
-                    Log.Info( "Attempting to retrieve connected readers..." );
-                    readernames = Context.GetReaders();
+			        string[] readernames = null;
+			        try {
+				        Log.Info( "Attempting to retrieve connected readers..." );
+				        readernames = Context.GetReaders();
 
-                } catch( PCSCException ) { }
+			        } catch( PCSCException ) { }
 
-                SCardMonitor monitor = null;
+			        SCardMonitor monitor = null;
 
-                if( null == readernames || 0 == readernames.Length ) {
-                    //throw new InvalidOperationException( "There are currently no readers installed." );
-                    Log.Warn( "There are currently no readers installed. Re-attempting in 10 seconds." );
+			        if( null == readernames || 0 == readernames.Length ) {
+				        //throw new InvalidOperationException( "There are currently no readers installed." );
+				        Log.Warn( "There are currently no readers installed. Re-attempting in 10 seconds." );
 
-                    if( null == RetryTimer ) {
-                        RetryTimer = new System.Timers.Timer( TimeSpan.FromSeconds( 10 ).TotalMilliseconds );
-                        RetryTimer.Elapsed += ( e, args ) => { ExecuteContext(); };
-                        RetryTimer.Start();
-                    }
+				        if( null == RetryTimer ) {
+					        RetryTimer = new Timer( TimeSpan.FromSeconds( 10 ).TotalMilliseconds );
+					        RetryTimer.Elapsed += ( e, args ) => { ExecuteContext(); };
+					        RetryTimer.Start();
+				        }
 
-                } else {
-                    if( null != RetryTimer ) {
-                        RetryTimer.Stop();
-                        RetryTimer.Dispose();
-                    }
+			        } else {
+				        if( null != RetryTimer ) {
+					        RetryTimer.Stop();
+					        RetryTimer.Dispose();
+				        }
 
-                    // Create a monitor object with its own PC/SC context.
-                    monitor = new SCardMonitor( new SCardContext(), SCardScope.System );
+				        // Create a monitor object with its own PC/SC context.
+				        monitor = new SCardMonitor( new SCardContext(), SCardScope.System );
 
-                    // Point the callback function(s) to the static defined methods below.
-                    monitor.CardInserted += CardInserted;
+				        // Point the callback function(s) to the static defined methods below.
+				        monitor.CardInserted += CardInserted;
 
-                    foreach( string reader in readernames ) {
-                        Log.InfoFormat( "Start monitoring for reader '{0}'.", reader );
-                    }
+				        foreach( string reader in readernames ) {
+					        Log.InfoFormat( "Start monitoring for reader '{0}'.", reader );
+				        }
 
-                    monitor.Start( readernames );
-                }
+				        monitor.Start( readernames );
+			        }
 
-                // Wait for the parent application to signal us to exit.
-                if( null == ExitApplication ) {
-                    ExitApplication = new ManualResetEvent( false );
-                }
-                ExitApplication.WaitOne();
+			        // Wait for the parent application to signal us to exit.
+			        if( null == ExitApplication ) {
+				        ExitApplication = new ManualResetEvent( false );
+			        }
+			        ExitApplication.WaitOne();
 
-                // Stop monitoring
-                if( null != monitor ) {
-                    monitor.Cancel();
-                    monitor.Dispose();
-                    monitor = null;
-                }
-            }
+			        // Stop monitoring
+			        if( null != monitor ) {
+				        monitor.Cancel();
+				        monitor.Dispose();
+				        monitor = null;
+			        }
+		        }
+
+	        } catch( PCSCException pcscException ) {
+		        Log.Error( "Failed to run application", pcscException );
+	        }
         }
 
         /// <summary>
