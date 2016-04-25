@@ -184,10 +184,10 @@ namespace OmniUdp.Handler {
 		/// </summary>
 		private void SendRequest( UidRequest payload = null ) {
 			UidRequest uidRequest = payload;
-			if( uidRequest == null ) {
+			if( !RecievedPayloads.IsEmpty && uidRequest == null ) {
 				RecievedPayloads.TryDequeue( out uidRequest );
 			}
-			if( !RecievedPayloads.IsEmpty && uidRequest != null ) {
+			if( uidRequest != null ) {
 				HttpWebRequest request = (HttpWebRequest)( HttpWebRequest.Create( EndpointUri ) );
 				request.Method = "POST";
 				request.ContentType = "application/json";
