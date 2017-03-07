@@ -76,6 +76,7 @@
     <Compile Include="Handler\ConsecutiveStrategiesStrategy.cs" />
     <Compile Include="Handler\IEventHandlingStrategy.cs" />
     <Compile Include="Handler\RestEndpointStrategy.cs" />
+    <Compile Include="Handler\PipeStreamStrategy.cs" />
     <Compile Include="Handler\UdpBroadcastStrategy.cs" />
     <Compile Include="Handler\WebsocketSecureStrategy.cs" />
     <Compile Include="Handler\WebsocketStrategy.cs" />
