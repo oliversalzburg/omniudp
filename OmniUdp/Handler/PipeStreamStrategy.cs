@@ -26,7 +26,7 @@ namespace OmniUdp.Handler {
 		/// </summary>
 		public PipeStream OutputStream { get; private set; }
 
-		private BinaryWriter _streamWriter;
+		private StreamWriter _streamWriter;
 
 		/// <summary>
 		///     Construct a new PipeStreamStrategy instance.
@@ -40,7 +40,9 @@ namespace OmniUdp.Handler {
 
 			StreamHandle = streamHandle;
 			OutputStream = new AnonymousPipeClientStream( PipeDirection.Out, StreamHandle );
-			_streamWriter = new BinaryWriter( OutputStream );
+			_streamWriter = new StreamWriter( OutputStream ) {
+				AutoFlush = true
+			};
 		}
 
 		/// <summary>
@@ -52,8 +54,7 @@ namespace OmniUdp.Handler {
 
 			Log.InfoFormat( "Using payload '{0}'.", payload );
 
-			_streamWriter.Write( payload );
-			OutputStream.WaitForPipeDrain();
+			_streamWriter.WriteLine( payload );
 		}
 
 		/// <summary>
@@ -65,8 +66,7 @@ namespace OmniUdp.Handler {
 
 			Log.InfoFormat( "Using payload '{0}'.", payload );
 
-			_streamWriter.Write( payload );
-			OutputStream.WaitForPipeDrain();
+			_streamWriter.WriteLine( payload );
 		}
 
 		public void Dispose() {
