@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.IO.Pipes;
-using System.Linq;
 using log4net;
 using OmniUdp.Payload;
 
@@ -10,7 +8,7 @@ namespace OmniUdp.Handler {
 	/// <summary>
 	///     An event handling strategy that sends events through an anonymous pipe stream.
 	/// </summary>
-	internal class PipeStreamStrategy : IEventHandlingStrategy {
+	internal class PipeStreamStrategy : IEventHandlingStrategy, IDisposable {
 		/// <summary>
 		///     The logging <see langword="interface" />
 		/// </summary>
@@ -28,6 +26,8 @@ namespace OmniUdp.Handler {
 		/// </summary>
 		public PipeStream OutputStream { get; private set; }
 
+		private BinaryWriter _streamWriter;
+
 		/// <summary>
 		///     Construct a new PipeStreamStrategy instance.
 		/// </summary>
@@ -40,6 +40,7 @@ namespace OmniUdp.Handler {
 
 			StreamHandle = streamHandle;
 			OutputStream = new AnonymousPipeClientStream( PipeDirection.Out, StreamHandle );
+			_streamWriter = new BinaryWriter( OutputStream );
 		}
 
 		/// <summary>
@@ -51,10 +52,8 @@ namespace OmniUdp.Handler {
 
 			Log.InfoFormat( "Using payload '{0}'.", payload );
 
-			using( BinaryWriter streamWriter = new BinaryWriter( OutputStream ) ) {
-				streamWriter.Write( payload );
-				OutputStream.WaitForPipeDrain();
-			}
+			_streamWriter.Write( payload );
+			OutputStream.WaitForPipeDrain();
 		}
 
 		/// <summary>
@@ -66,9 +65,14 @@ namespace OmniUdp.Handler {
 
 			Log.InfoFormat( "Using payload '{0}'.", payload );
 
-			using( BinaryWriter streamWriter = new BinaryWriter( OutputStream ) ) {
-				streamWriter.Write( payload );
-				OutputStream.WaitForPipeDrain();
+			_streamWriter.Write( payload );
+			OutputStream.WaitForPipeDrain();
+		}
+
+		public void Dispose() {
+			if( _streamWriter != null ) {
+				_streamWriter.Dispose();
+				_streamWriter = null;
 			}
 		}
 	}
