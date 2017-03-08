@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Express 2013 for Windows Desktop
-VisualStudioVersion = 12.0.31101.0
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OmniUdp", "OmniUdp\OmniUdp.csproj", "{6C41CCA4-E737-4EB9-8AF1-66D2767EC0E7}"
 EndProject
@@ -12,15 +12,18 @@ Global
 		Debug (Info Scanner)|Any CPU = Debug (Info Scanner)|Any CPU
 		Debug (Terminal→Web)|Any CPU = Debug (Terminal→Web)|Any CPU
 		Debug|Any CPU = Debug|Any CPU
+		Pipe|Any CPU = Pipe|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{6C41CCA4-E737-4EB9-8AF1-66D2767EC0E7}.Debug (Info Scanner)|Any CPU.ActiveCfg = Debug (Info Scanner)|Any CPU
-		{6C41CCA4-E737-4EB9-8AF1-66D2767EC0E7}.Debug (Info Scanner)|Any CPU.Build.0 = Debug (Info Scanner)|Any CPU
+		{6C41CCA4-E737-4EB9-8AF1-66D2767EC0E7}.Debug (Info Scanner)|Any CPU.ActiveCfg = Release|Any CPU
+		{6C41CCA4-E737-4EB9-8AF1-66D2767EC0E7}.Debug (Info Scanner)|Any CPU.Build.0 = Release|Any CPU
 		{6C41CCA4-E737-4EB9-8AF1-66D2767EC0E7}.Debug (Terminal→Web)|Any CPU.ActiveCfg = Debug (Terminal→Web)|Any CPU
 		{6C41CCA4-E737-4EB9-8AF1-66D2767EC0E7}.Debug (Terminal→Web)|Any CPU.Build.0 = Debug (Terminal→Web)|Any CPU
 		{6C41CCA4-E737-4EB9-8AF1-66D2767EC0E7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{6C41CCA4-E737-4EB9-8AF1-66D2767EC0E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6C41CCA4-E737-4EB9-8AF1-66D2767EC0E7}.Pipe|Any CPU.ActiveCfg = Pipe|Any CPU
+		{6C41CCA4-E737-4EB9-8AF1-66D2767EC0E7}.Pipe|Any CPU.Build.0 = Pipe|Any CPU
 		{6C41CCA4-E737-4EB9-8AF1-66D2767EC0E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6C41CCA4-E737-4EB9-8AF1-66D2767EC0E7}.Release|Any CPU.Build.0 = Release|Any CPU
 		{459E0FB4-AF42-4123-9923-7EA68CA01B09}.Debug (Info Scanner)|Any CPU.ActiveCfg = Debug|Any CPU
@@ -29,6 +32,8 @@ Global
 		{459E0FB4-AF42-4123-9923-7EA68CA01B09}.Debug (Terminal→Web)|Any CPU.Build.0 = Debug|Any CPU
 		{459E0FB4-AF42-4123-9923-7EA68CA01B09}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{459E0FB4-AF42-4123-9923-7EA68CA01B09}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{459E0FB4-AF42-4123-9923-7EA68CA01B09}.Pipe|Any CPU.ActiveCfg = Release|Any CPU
+		{459E0FB4-AF42-4123-9923-7EA68CA01B09}.Pipe|Any CPU.Build.0 = Release|Any CPU
 		{459E0FB4-AF42-4123-9923-7EA68CA01B09}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{459E0FB4-AF42-4123-9923-7EA68CA01B09}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
