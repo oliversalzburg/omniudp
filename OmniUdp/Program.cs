@@ -130,7 +130,7 @@ namespace OmniUdp {
 			ConsecutiveStrategiesStrategy eventHandlingStrategy = new ConsecutiveStrategiesStrategy();
 
 			// Use UDP broadcasting by default.
-			if( string.IsNullOrEmpty( CommandLineOptions.RestEndpoint ) && !CommandLineOptions.WebsocketServer ) {
+			if( string.IsNullOrEmpty( CommandLineOptions.RestEndpoint ) && !CommandLineOptions.WebsocketServer && string.IsNullOrEmpty( CommandLineOptions.StreamHandle ) ) {
 				CommandLineOptions.UseBroadcast = true;
 			}
 			// Construct the appropriate event handling strategy.
@@ -167,7 +167,6 @@ namespace OmniUdp {
 						CommandLineOptions.CertificateFilePath,
 						CommandLineOptions.Port,
 						CommandLineOptions.CertificateFilePassword );
-
 				} else {
 					strategy = new WebsocketStrategy(
 						CommandLineOptions.IPAddress,
@@ -209,7 +208,6 @@ namespace OmniUdp {
 						exitApplication = true;
 					}
 					app.HandleKeyboardInput( consoleKeyInfo );
-
 				} else {
 					if( app.Destroyed ) {
 						break;
